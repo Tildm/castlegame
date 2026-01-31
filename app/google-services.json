@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "200782842036",
+    "project_id": "championofcastles",
+    "storage_bucket": "championofcastles.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:200782842036:android:9483b8240023dc746eafe1",
+        "android_client_info": {
+          "package_name": "com.example.castlegame"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA11ZjzrNa_cR6HtrKUywZ77ZFgaqhctTk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:200782842036:android:ebfa25a66c2705286eafe1",
+        "android_client_info": {
+          "package_name": "com.example.castlegames"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA11ZjzrNa_cR6HtrKUywZ77ZFgaqhctTk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:200782842036:android:89fbbedf9bd76ff56eafe1",
+        "android_client_info": {
+          "package_name": "com.example.myapplication"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA11ZjzrNa_cR6HtrKUywZ77ZFgaqhctTk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
