@@ -10,6 +10,26 @@ class AuthRepository {
 
     private val auth = FirebaseAuth.getInstance()
 
+    fun authStateFlow(): Flow<FirebaseUser?> = callbackFlow {
+        val listener = FirebaseAuth.AuthStateListener {
+            trySend(it.currentUser)
+        }
+        auth.addAuthStateListener(listener)
+        awaitClose {
+            auth.removeAuthStateListener(listener)
+        }
+    }
+
+    fun logout() {
+        auth.signOut()
+    }
+}
+
+
+/*class AuthRepository {
+
+    private val auth = FirebaseAuth.getInstance()
+
     val authState: Flow<FirebaseUser?> = callbackFlow {
         val listener = FirebaseAuth.AuthStateListener {
             trySend(it.currentUser)
@@ -25,4 +45,4 @@ class AuthRepository {
     fun logout() {
         auth.signOut()
     }
-}
+}*/

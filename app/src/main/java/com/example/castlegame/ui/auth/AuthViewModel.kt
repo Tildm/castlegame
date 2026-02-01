@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 
 class AuthViewModel : ViewModel() {
 
+
     private val _pendingRoute = MutableStateFlow<String?>(null)
     val pendingRoute: StateFlow<String?> = _pendingRoute
 
@@ -47,9 +48,12 @@ class AuthViewModel : ViewModel() {
         initialValue = auth.currentUser
     )
 
-    fun logout() {
-        auth.signOut()
-    }
+
+  fun logout() {
+      auth.signOut()
+  }
+
+
 
     /* ---------------------------------------------------
        🔁 ACTION RESULT STATE (login / register UI)

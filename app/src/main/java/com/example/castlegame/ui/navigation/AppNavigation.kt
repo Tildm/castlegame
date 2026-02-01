@@ -56,7 +56,7 @@ fun AppNavigation(
         }
 
         composable("game") {
-         //   val gameViewModel: GameViewModel = viewModel()
+        // val gameViewModel: GameViewModel = viewModel()
             GameScreen(
                 viewModel = gameViewModel,
                 onLogout = authViewModel::logout

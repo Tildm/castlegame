@@ -69,7 +69,7 @@ fun GameScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-               // .padding(padding)
+                .padding(padding)
                 .padding(
                     top = if (isLandscape) 0.dp else 16.dp,
                     start = 16.dp,

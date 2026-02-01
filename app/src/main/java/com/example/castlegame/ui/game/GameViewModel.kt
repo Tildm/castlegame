@@ -20,11 +20,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 
+
 class GameViewModel : ViewModel() {
 
     init {
         Log.d("GameViewModel", "CREATED")
     }
+
+
 
     private val firestoreRepository: FirestoreRepository = FirestoreRepository()
     private val userId: String?
@@ -212,6 +215,15 @@ class GameViewModel : ViewModel() {
                 onError = {
                     Log.e("Firestore", "Save failed", it)
                 }
+            )
+        }
+
+
+        if (uid != null && winner != null) {
+            repository.saveLeagueResult(
+                userId = uid,
+                leagueId = league.name,
+                winner = winner,
             )
         }
 
