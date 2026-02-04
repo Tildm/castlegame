@@ -39,23 +39,3 @@ data class GameUiState(
 )
 
 
-/*data class GameUiState(
-    val completedLeagues: Set<League> = emptySet(),
-    val currentLeague: League? = null,
-    val leagueWinner: CastleItem? = null,
-
-    val champions: Map<League, CastleItem> = emptyMap(),
-
-
-    val leagues: Map<League, List<CastleItem>> = emptyMap(),
-    val currentPair: Pair<CastleItem, CastleItem>? = null,
-
-    val remainingGames: Int = 0,
-    val selectedIndex: Int? = null,
-    val canProceed: Boolean = false,
-    val buttonText: String = "Select League",
-    val leagueLocked: Boolean = false,
-    val isLastPair: Boolean = false,
-    val tapCounts: Map<String, Int> = emptyMap()
-)*/
-

@@ -4,14 +4,10 @@ enum class GamePhase {
     LEAGUE_WINNER,
     LEAGUE_RANKING,
 
-    //INTERNATIONAL_PLAYING,
-   // INTERNATIONAL_WINNER,
 
     SUPERLEAGUE_PLAYING,   // 🆕 8 vár egymás ellen
     SUPERLEAGUE_WINNER,
     SUPERLEAGUE_RANKING,
 
-
-   // RESULTS
 }
 

@@ -51,8 +51,6 @@ class GameViewModel : ViewModel() {
 
 
 
-    //private val tapCounts = mutableStateMapOf<String, Int>()
-
 
     init {
         loadData()
@@ -100,29 +98,6 @@ class GameViewModel : ViewModel() {
             )
         }
     }
-/*    fun selectLeague(league: League) {
-        if (_uiState.value.leagueLocked) return
-
-        val pairs = generatePairs(
-            _uiState.value.leagues[league].orEmpty()
-        ).toMutableList()
-
-        _uiState.update {
-            it.copy(
-                currentLeague = league,
-                currentPair = pairs.removeFirstOrNull(),
-                remainingGames = pairs.size,
-                leagueLocked = true,
-                selectedIndex = null,
-                canProceed = false,
-                phase = GamePhase.PLAYING,
-
-            )
-        }
-
-        shuffledPairs = pairs
-        tapCounts.clear()
-    }*/
 
 
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
@@ -168,57 +143,24 @@ class GameViewModel : ViewModel() {
     }
 
 
-    /*@RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
-    fun onCastleSelected(index: Int) {
-        val pair = uiState.value.currentPair ?: return
-
-        val selected = if (index == 0) pair.first else pair.second
-
-
-        tapCounts[selected.id] =
-            (tapCounts[selected.id] ?: 0) + 1
-
-        Log.d("GameViewModel", "shuffledPairs in CastleSelected = $shuffledPairs")
-
-
-       *//* if (shuffledPairs.isNotEmpty()) {
-            nextPair()
-        } else {
-            finishLeague()
-        }*//*
-
-        if (shuffledPairs.isEmpty()) {
-            Log.d("GameViewModel", "if shuffledPairs empty in CastleSelected = $shuffledPairs")
-            if (_uiState.value.phase == GamePhase.SUPERLEAGUE_PLAYING) {
-                Log.d("GameViewModel", "SUPERLEAGUE_PLAYING in CastleSelected = $shuffledPairs")
-                finishSuperLeague()
-            } else {
-                finishLeague()
-            }
-        } else {
-            nextPair()
-        }
-
-      *//*  if (shuffledPairs.isEmpty()) {
-            finishLeague()
-            return   // ⬅️ 🔑 EZ HIÁNYZOTT
-        }
-
-        nextPair()*//*
-
-        Log.d("GameViewModel", "onCastleSelected END")
-
-    }*/
-
 
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     fun nextPair() {
         Log.d("GameViewModel", "nextPair() called, shuffled size = ${shuffledPairs.size}")
 
-        val state = _uiState.value
+       // val state = _uiState.value
+        val phase = _uiState.value.phase
 
-        if (state.phase != GamePhase.PLAYING) {
+      /*  if (state.phase != GamePhase.PLAYING) {
             Log.d("GameViewModel", "nextPair SKIPPED, phase=${state.phase}")
+            return
+        }*/
+
+        if (
+            phase != GamePhase.PLAYING &&
+            phase != GamePhase.SUPERLEAGUE_PLAYING
+        ) {
+            Log.d("GameViewModel", "nextPair SKIPPED, phase=$phase")
             return
         }
 
@@ -359,171 +301,47 @@ class GameViewModel : ViewModel() {
         Log.d("GameViewModel", "Phase AFTER update: ${_uiState.value.phase}")
         Log.d("GameViewModel", "leagueWinner AFTER update: ${_uiState.value.leagueWinner}")
     }
-    /*@RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
-    private fun finishLeague() {
-        val state = _uiState.value
-        val league = _uiState.value.currentLeague ?: return
-        val updated = _uiState.value.completedLeagues + league
-        //val resetSeason = updated.size == League.entries.size
-
-        Log.d("GameViewModel", "finishLeague CALLED")
-        Log.d("GameViewModel", "Current phase BEFORE update: ${state.phase}")  // ← ADD THIS
-        Log.d("GameViewModel", "league castles = ${_uiState.value.leagues[league]}")
 
 
-
-        val winnerId = tapCounts.maxByOrNull { it.value }?.key
-        val winner = state.leagues[league]
-            ?.firstOrNull { it.id == winnerId }
-
-        Log.d("GameViewModel", "winner = $winner")
-        Log.d("GameViewModel", "winnerId = $winnerId")
-
-
-        // 3️⃣ eltárolás
-        if (winner != null) {
-            champions[league] = winner
-        }
-
-
-        val ranking = tapCounts
-            .toList()
-            .sortedByDescending { it.second }
-            .map { it.first }
-
-       // val top2Ids = ranking.take(2)
-
-
-
-        //val top2Castles = leagueCastles.filter { it.id in top2Ids }
-
-
-
-
-        val result = LeagueResult(
-            league = league,
-            scores = tapCounts.toMap(),
-            ranking = ranking
-        )
-
-        val uid = userId
-        if (uid != null) {
-            firestoreRepository.saveLeagueResult(
-                userId = uid,
-                result = result,
-                onSuccess = {
-                    Log.d("Firestore", "League ${league.name} saved")
-                },
-                onError = {
-                    Log.e("Firestore", "Save failed", it)
-                }
-            )
-        }
-
-
-        if (uid != null && winner != null) {
-            repository.saveLeagueResult(
-                userId = uid,
-                leagueId = league.name,
-                winner = winner,
-            )
-        }
-
-        // 🥇🥈 TOP 2 kiválasztás
-        val top2Ids = tapCounts
-            .toList()
-            .sortedByDescending { it.second }
-            .take(2)
-            .map { it.first }
-
-        val top2Castles = state.leagues[league]
-            ?.filter { it.id in top2Ids }
-            ?: emptyList()
-
-       // val leagueCastles = state.leagues[league].orEmpty()
-        leagueTopResults[league] = top2Castles
-
-        Log.d(
-            "GameViewModel",
-            "TOP2 for ${league.name}: ${top2Castles.map { it.title }}"
-        )
-
-        Log.d("GameViewModel", "TOP2 for ${league.name}: $top2Castles")
-
-
-
-        _uiState.update {
-            it.copy(
-                leagueWinner = winner,
-                phase = GamePhase.LEAGUE_WINNER,
-                completedLeagues = it.completedLeagues + league,
-                currentLeague = league,
-                currentPair = null,
-                leagueLocked = false,
-                selectedIndex = null,
-                canProceed = false,
-                remainingGames = 0,
-                buttonText = if (updated.size == League.entries.size)
-                    "Show Results"
-                else
-                    "Select League"
-            )
-                //buttonText = "Select League"
-
-        }
-        Log.d("GameViewModel", "Phase AFTER update: ${_uiState.value.phase}")  // ← ADD THIS
-        Log.d("GameViewModel", "leagueWinner AFTER update: ${_uiState.value.leagueWinner}")  // ← ADD THIS
-
-       *//* if (updated.size == League.entries.size) {
-            startSuperLeague()
-        }*//*
-
-    }
-*/
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     fun continueFromWinner() {
+        // Always show ranking first
+        _uiState.update {
+            it.copy(
+                leagueWinner = null,
+                currentPair = null,
+                phase = GamePhase.LEAGUE_RANKING
+            )
+        }
+    }
+
+
+
+
+    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
+    fun continueFromRanking() {
         val completed = _uiState.value.completedLeagues.size
         val total = League.entries.size
 
         if (completed == total) {
-            // ⬅️ csak itt indul a SuperLeague
-            Log.d("GameViewModel", "SuperLeague here starts")
+            // All leagues done → Start SuperLeague
+            Log.d("GameViewModel", "All leagues completed, starting SuperLeague")
             startSuperLeague()
         } else {
+            // More leagues to play → Back to league selection
+            tapCounts.clear()
+
             _uiState.update {
                 it.copy(
+                    currentLeague = null,
                     leagueWinner = null,
-                    currentPair = null,
-                   //phase = GamePhase.SELECT_LEAGUE,
-                   phase = GamePhase.LEAGUE_RANKING
-
+                    phase = GamePhase.SELECT_LEAGUE,
+                    buttonText = "Select League"
                 )
             }
         }
     }
 
- /*     fun continueFromWinner() {
-          _uiState.update {
-              it.copy(
-                  leagueWinner = null,
-                  phase = GamePhase.LEAGUE_RANKING
-              )
-          }
-      }*/
-
-    fun continueFromRanking() {
-
-        tapCounts.clear()
-
-        _uiState.update {
-            it.copy(
-                currentLeague = null,
-                leagueWinner = null,
-                phase = GamePhase.SELECT_LEAGUE,
-                buttonText = "Select League"
-            )
-        }
-    }
 
 
     private fun generatePairs(
@@ -544,7 +362,8 @@ class GameViewModel : ViewModel() {
 
         return items
             .map { castle ->
-                castle to (tapCounts[castle.id] ?: 0)
+                //castle to (tapCounts[castle.id] ?: 0)
+                castle to (winCounts[castle.id] ?: 0)
             }
             .sortedByDescending { it.second }
     }
@@ -597,42 +416,6 @@ class GameViewModel : ViewModel() {
     }
 
 
-    /*@RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
-    private fun startSuperLeague() {
-        // 🔢 8 vár összegyűjtése
-        superLeagueCastles = leagueTopResults
-            .values
-            .flatten()
-            .distinctBy { it.id }
-
-        require(superLeagueCastles.size == 8) {
-            "SuperLeague requires exactly 8 castles"
-        }
-
-        superLeagueTapCounts.clear()
-
-        // ♻️ újrahasználjuk a meglévő párosítás-logikát
-        shuffledPairs = superLeagueCastles
-            .shuffled()
-            .chunked(2)
-            .map { it[0] to it[1] }
-            .toMutableList()
-
-        nextPair()
-
-        _uiState.update {
-            it.copy(
-                superLeagueCastles = superLeagueCastles,
-                phase = GamePhase.SUPERLEAGUE_PLAYING,
-                currentLeague = null,
-                leagueWinner = null,
-                currentPair = null,
-                selectedIndex = null
-            )
-        }
-
-        Log.d("GameViewModel", "SuperLeague started with $superLeagueCastles")
-    }*/
 
     private fun finishSuperLeague() {
         Log.d("GameViewModel", "finishSuperLeague CALLED")
@@ -666,57 +449,6 @@ class GameViewModel : ViewModel() {
             )
         }
     }
-    /*private fun finishSuperLeague() {
-        Log.d("GameViewModel", "finishSuperLeague CALLED")
-
-        val state = _uiState.value
-
-        val winnerId = tapCounts.maxByOrNull { it.value }?.key
-        val winner = uiState.value.superLeagueCastles
-            .firstOrNull { it.id == winnerId }
-
-        Log.d("GameViewModel", "SUPER winnerId = $winnerId")
-        Log.d("GameViewModel", "SUPER winner = $winner")
-
-        if (winner == null) return   // 💣 safety
-
-        // 🔥 UI state
-        _uiState.update {
-            it.copy(
-                superLeagueWinner = winner as CastleItem?,
-                phase = GamePhase.SUPERLEAGUE_WINNER,
-                currentPair = null,
-                selectedIndex = null,
-                canProceed = false,
-               // phase = GamePhase.SUPERLEAGUE_RANKING
-            )
-        }
-
-        // 🔐 Firestore mentés
-        val uid = userId ?: return
-        firestoreRepository.saveInternationalResult(
-            userId = uid,
-            winner = winner
-        )
-    }
-*/
-
-    /*   private fun finishSuperLeague() {
-           Log.d("GameViewModel", "finishSuperLeague CALLED")
-
-           val winnerId = superLeagueTapCounts.maxByOrNull { it.value }?.key
-           val winner = superLeagueCastles.firstOrNull { it.id == winnerId }
-
-           _uiState.update {
-               it.copy(
-                   phase = GamePhase.SUPERLEAGUE_WINNER,
-                   leagueWinner = winner,
-                   currentPair = null
-               )
-           }
-
-           Log.d("GameViewModel", "SuperLeague winner = $winner")
-       }*/
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun continueFromSuperLeagueWinner() {
@@ -747,18 +479,6 @@ class GameViewModel : ViewModel() {
         )
     }
 
-/*    fun backToMenu() {
-        _uiState.update {
-            it.copy(
-                phase = GamePhase.SELECT_LEAGUE,
-                currentLeague = null,
-                currentPair = null,
-                selectedIndex = null,
-                leagueWinner = null,
-                superLeagueWinner = null
-            )
-        }
-    }*/
 
     fun backToMenu() {
         Log.d("GameViewModel", "Back to menu")
@@ -778,7 +498,6 @@ class GameViewModel : ViewModel() {
             )
         }
     }
-
 
 
 }
