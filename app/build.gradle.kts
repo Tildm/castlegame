@@ -66,6 +66,8 @@ dependencies {
     implementation(libs.androidx.compose.remote.creation.core)
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.benchmark.traceprocessor)
+    implementation(libs.androidx.ui)
+    implementation(libs.androidx.runtime)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

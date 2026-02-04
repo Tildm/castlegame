@@ -1,5 +1,6 @@
 package com.example.castlegame.ui.game
 
+import GlobalRankingScreen
 import LeagueRankingScreen
 import WinnerScreen
 import android.annotation.SuppressLint
@@ -25,6 +26,7 @@ import com.example.castlegame.data.model.League
 import androidx.compose.ui.platform.LocalConfiguration
 import android.content.res.Configuration
 import android.util.Log
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -35,7 +37,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 fun GameScreen(
     onLogout: () -> Unit,
     //viewModel: GameViewModel
-    viewModel: GameViewModel = viewModel()
+    viewModel: GameViewModel = viewModel(),
+
 
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -69,6 +72,7 @@ fun GameScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.DarkGray)
                 .padding(padding)
                 .padding(
                     top = if (isLandscape) 0.dp else 16.dp,
@@ -146,6 +150,45 @@ fun GameScreen(
                                             onContinue = viewModel::continueFromRanking
                                         )
                                     }
+                                    GamePhase.SUPERLEAGUE_PLAYING -> {
+                                        Log.d("GameScreen", "Rendering: SUPERLEAGUE_PLAYING")
+
+                                        state.currentPair?.let { pair ->
+                                            CastleRow(
+                                                pair = pair,
+                                                selectedIndex = state.selectedIndex,
+                                                enabled = true,
+                                                onSelect = viewModel::onCastleSelected
+                                            )
+                                        } ?: run {
+                                            CircularProgressIndicator()
+                                        }
+                                    }
+                                    GamePhase.SUPERLEAGUE_WINNER -> {
+                                        Log.d("GameScreen", "Rendering: SUPERLEAGUE_WINNER")
+
+                                        val winner = state.superLeagueWinner
+
+                                        if (winner != null) {
+                                            WinnerScreen(
+                                                league = null, // ⬅️ fontos, lásd lent
+                                                winner = state.superLeagueWinner!!,
+                                                onContinue = viewModel::continueFromSuperLeagueWinner
+                                            )
+                                        } else {
+                                            CircularProgressIndicator()
+                                        }
+                                    }
+
+                                    GamePhase.SUPERLEAGUE_RANKING -> {
+                                        Log.d("GameScreen", "Rendering: SUPERLEAGUE_RANKING")
+
+                                        GlobalRankingScreen(
+                                            ranking = state.globalRanking,
+                                            onBack = viewModel::backToMenu
+                                        )
+                                    }
+
 
                                 }
 
@@ -154,51 +197,6 @@ fun GameScreen(
                         }
                     }
                 }
-
-                /*when {
-                    state.leagueWinner != null && state.currentLeague == null -> {
-                        WinnerScreen(
-                            league = state.completedLeagues.last(),
-                            winner = state.leagueWinner!!,
-                            onContinue = viewModel::clearLeagueWinner
-                        )
-                    }
-
-                    state.currentPair != null -> {
-                        CastleRow(
-                            pair = state.currentPair!!,
-                            selectedIndex = state.selectedIndex,
-                            enabled = state.remainingGames > 0,
-                            onSelect = viewModel::onCastleSelected
-                        )
-                    }
-                }*/
-
-
-            /*   Box(
-                   modifier = Modifier
-                       .fillMaxSize(),
-                   contentAlignment = Alignment.Center
-               ) {
-                   state.currentPair?.let { pair ->
-                       CastleRow(
-                           pair = pair,
-                           selectedIndex = state.selectedIndex,
-                           enabled = state.remainingGames > 0,
-                           onSelect = viewModel::onCastleSelected
-                       )
-                   }
-               }*/
-
-/*
-@Composable
-fun isLandscape(): Boolean {
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    return configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-
-}
-*/
 
 
 @Composable
@@ -297,100 +295,6 @@ fun CastleCard(
     }
 }
 
-/*
-@Composable
-fun CastleCard(
-    castle: CastleItem,
-    isDimmed: Boolean,
-    isSelected: Boolean,
-    enabled: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-
-) {
-    val isLandscape =
-        LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-
-
-    */
-/*    Card(
-            modifier = modifier
-                .then(
-                    if (landscape) {
-                        Modifier
-                            .aspectRatio(16f / 9f)   // 🌄 fekvő
-                    } else {
-                        Modifier
-                            .width(160.dp)           // 📱 álló – régi jó méretek
-                            .height(260.dp)
-                    }
-                )
-                .alpha(if (enabled) 1f else 0.4f)
-                .clickable(enabled = enabled, onClick = onClick),
-            elevation = CardDefaults.cardElevation(6.dp)
-        )*//*
-
-    Card(
-        modifier = Modifier
-            .then(
-                if (isLandscape) {
-                    Modifier.aspectRatio(16f / 9f)   // 🌄
-                } else {
-                    Modifier.height(260.dp)
-                }
-            )
-            .alpha(if (enabled) 1f else 0.4f)
-            .clickable(enabled = enabled, onClick = onClick),
-        elevation = CardDefaults.cardElevation(6.dp)
-    ) {
-        Column {
-            AsyncImage(
-                model = castle.imageUrl,
-                contentDescription = castle.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)   // ⬅️ EZ FONTOS
-            )
-
-
-
-            */
-/* AsyncImage(
-                 model = castle.imageUrl,
-                 contentDescription = castle.title,
-                 contentScale = ContentScale.Crop,
-                 modifier = Modifier
-                     .fillMaxWidth()
-                     .then(
-                         if (landscape) {
-                             Modifier.weight(1f)   // kitölti a kártyát
-                         } else {
-                             Modifier.height(200.dp)
-                         }
-                     )
-             )*//*
-
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.Black.copy(alpha = 0.7f))
-                    .padding(8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = castle.title,
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2
-                )
-            }
-        }
-    }
-}
-*/
 
 
 

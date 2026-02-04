@@ -29,7 +29,7 @@ import com.example.castlegame.data.model.League
 
 @Composable
 fun WinnerScreen(
-    league: League,
+    league: League?,
     winner: CastleItem,
     onContinue: () -> Unit
 ) {
@@ -49,7 +49,7 @@ fun WinnerScreen(
 
         if (!isLandscape) {
             Text(
-                text = "${league.name} winner",
+                text = league?.let { "${it.name} winner" } ?: "🏆 Super League Winner",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold
             )
