@@ -62,9 +62,6 @@ fun GameScreen(
         bottomBar = {
             GameBottomBar(
                 remaining = state.remainingGames,
-               /* buttonText = state.buttonText,
-                enabled = state.canProceed,
-                onNext = viewModel::nextPair*/
             )
         }
     ) { padding ->
@@ -314,8 +311,6 @@ fun CastleRow(
     ) {
         CastleCard(
             castle = pair.first,
-            //isSelected = selectedIndex == 0,
-           // isDimmed = selectedIndex == 1,
             enabled = enabled,
             modifier = Modifier.weight(1f),
             onClick = { onSelect(0) }

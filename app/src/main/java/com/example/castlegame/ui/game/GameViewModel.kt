@@ -1,5 +1,7 @@
 package com.example.castlegame.ui.game
 
+
+import GamePhase
 import LeagueResult
 import android.os.Build
 import android.util.Log
@@ -8,7 +10,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.castlegame.data.model.CastleItem
 import com.example.castlegame.data.model.GlobalCastle
-//import com.example.castlegame.data.model.ImageTextPair
 import com.example.castlegame.data.model.League
 import com.example.castlegame.data.repository.FirestoreRepository
 import com.example.castlegame.data.repository.LeagueRepository
@@ -17,9 +18,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-//import com.example.castlegame.data.source.League
 import kotlinx.coroutines.launch
-
 
 
 class GameViewModel : ViewModel() {
@@ -27,8 +26,6 @@ class GameViewModel : ViewModel() {
     init {
         Log.d("GameViewModel", "CREATED")
     }
-
-
 
     private val firestoreRepository: FirestoreRepository = FirestoreRepository()
 
@@ -45,10 +42,6 @@ class GameViewModel : ViewModel() {
     private val winCounts = mutableMapOf<String, Int>()
 
     private val leagueTopResults = mutableMapOf<League, List<CastleItem>>()
-
-    private var superLeagueCastles: List<CastleItem> = emptyList()
-    private val superLeagueTapCounts = mutableMapOf<String, Int>()
-
 
 
 
@@ -82,6 +75,7 @@ class GameViewModel : ViewModel() {
         val castles = _uiState.value.leagues[league] ?: return
 
         shuffledPairs = generateAllPairs(castles).shuffled().toMutableList()
+        val totalGames = shuffledPairs.size
 
         val firstPair = if (shuffledPairs.isNotEmpty()) {
             shuffledPairs.removeAt(0)
@@ -92,7 +86,7 @@ class GameViewModel : ViewModel() {
                 currentLeague = league,
                 phase = GamePhase.PLAYING,
                 currentPair = firstPair,
-                remainingGames = shuffledPairs.size,
+                remainingGames = totalGames,
                 selectedIndex = null,
                 leagueLocked = true
             )
@@ -120,7 +114,6 @@ class GameViewModel : ViewModel() {
 
             val pair = _uiState.value.currentPair ?: return@launch
             val winner = if (index == 0) pair.first else pair.second
-            val loser = if (index == 0) pair.second else pair.first
 
             winCounts[winner.id] = (winCounts[winner.id] ?: 0) + 1
 
@@ -148,13 +141,7 @@ class GameViewModel : ViewModel() {
     fun nextPair() {
         Log.d("GameViewModel", "nextPair() called, shuffled size = ${shuffledPairs.size}")
 
-       // val state = _uiState.value
         val phase = _uiState.value.phase
-
-      /*  if (state.phase != GamePhase.PLAYING) {
-            Log.d("GameViewModel", "nextPair SKIPPED, phase=${state.phase}")
-            return
-        }*/
 
         if (
             phase != GamePhase.PLAYING &&
@@ -179,8 +166,9 @@ class GameViewModel : ViewModel() {
         _uiState.update {
             it.copy(
                 currentPair = next,
-                remainingGames = shuffledPairs.size,
-                leagueLocked = true
+                remainingGames = shuffledPairs.size + 1,
+                leagueLocked = true,
+                selectedIndex = null  // ✅ Reset selection for new pair
             )
         }
     }
@@ -195,11 +183,14 @@ class GameViewModel : ViewModel() {
         _uiState.update {
             it.copy(
                 currentPair = shuffled.removeFirstOrNull(),
-                remainingGames = shuffled.size,
+                //remainingGames = shuffled.size,
                 selectedIndex = null,
                 canProceed = false,
                 //leagueLocked = false,
-                buttonText = "Next"
+                buttonText = "Next",
+                remainingGames = 0
+
+
             )
         }
 
@@ -351,18 +342,17 @@ class GameViewModel : ViewModel() {
             list.drop(index + 1).map { item to it }
         }.shuffled()
 
-    fun clearLeagueWinner() {
+/*    fun clearLeagueWinner() {
         _uiState.update {
             it.copy(leagueWinner = null)
         }
-    }
+    }*/
 
     fun getLeagueRanking(league: League): List<Pair<CastleItem, Int>> {
         val items = uiState.value.leagues[league].orEmpty()
 
         return items
             .map { castle ->
-                //castle to (tapCounts[castle.id] ?: 0)
                 castle to (winCounts[castle.id] ?: 0)
             }
             .sortedByDescending { it.second }
@@ -380,7 +370,7 @@ class GameViewModel : ViewModel() {
             top2PerLeague.addAll(top2)
         }
         shuffledPairs = generateAllPairs(top2PerLeague).shuffled().toMutableList()
-
+        val totalGames = shuffledPairs.size
         // Get the first pair directly
         val firstPair = if (shuffledPairs.isNotEmpty()) {
             shuffledPairs.removeAt(0)
@@ -397,7 +387,7 @@ class GameViewModel : ViewModel() {
                 leagueWinner = null,
                 selectedIndex = null,
                 currentPair = firstPair,  // ← Set the first pair here!
-                remainingGames = shuffledPairs.size
+                remainingGames = totalGames,
             )
         }
 
@@ -445,10 +435,19 @@ class GameViewModel : ViewModel() {
                 superLeagueWinner = winner,
                 globalRanking = globalRanking,
                 currentPair = null,
-                selectedIndex = null
+                selectedIndex = null,
+                remainingGames = 0
             )
         }
+        firestoreRepository.saveSuperLeagueResults(
+            results = globalRanking,
+            onError = {
+                Log.e("Firestore", "Saving global ranking failed", it)
+            }
+        )
+
     }
+
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun continueFromSuperLeagueWinner() {
@@ -456,7 +455,8 @@ class GameViewModel : ViewModel() {
 
         _uiState.update {
             it.copy(
-                phase = GamePhase.SELECT_LEAGUE,
+                //phase = GamePhase.SELECT_LEAGUE,
+                phase = GamePhase.SUPERLEAGUE_RANKING,
                 currentPair = null,
                 selectedIndex = null,
                 canProceed = false
@@ -492,9 +492,18 @@ class GameViewModel : ViewModel() {
                 globalRanking = emptyList(),
 
                 // opcionális: ha új szezon indul
-               /* completedLeagues = emptySet(),
-                champions = emptyMap(),
-                leagueTopResults = emptyMap()*/
+                completedLeagues = emptySet(),
+                leagueWinner = null,
+                superLeagueCastles= emptyList(),
+                remainingGames = 0,
+                selectedIndex = null,
+                currentLeague = null,
+                //leagues = emptyMap(),
+                leagueLocked = false,
+
+
+                currentPair = null,
+               // shuffledPairs = emptyList(),
             )
         }
     }

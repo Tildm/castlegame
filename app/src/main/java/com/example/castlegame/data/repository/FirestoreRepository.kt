@@ -71,32 +71,62 @@ class FirestoreRepository(
         }
     }
 
-
     @RequiresApi(Build.VERSION_CODES.O)
     fun loadGlobalSuperLeagueRanking(
+        limit: Int = 50,
         onSuccess: (List<GlobalCastle>) -> Unit,
-        onError: (Throwable) -> Unit
+        onError: (Exception) -> Unit
     ) {
-        db.collection("global_superleague")
-            .document("ranking")
-            .collection("castles")
+        db.collection("global_superleague_ranking")
             .orderBy("wins", Query.Direction.DESCENDING)
+            .limit(limit.toLong())
             .get()
             .addOnSuccessListener { snapshot ->
                 val list = snapshot.documents.mapNotNull { doc ->
-                    val wins = doc.getLong("wins") ?: return@mapNotNull null
-                    val title = doc.getString("title") ?: return@mapNotNull null
-                    val imageUrl = doc.getString("imageUrl") ?: ""
-
-                    GlobalCastle(
-                        id = doc.id,
-                        title = title,
-                        imageUrl = imageUrl,
-                        wins = wins
-                    )
+                    doc.toObject(GlobalCastle::class.java)
                 }
                 onSuccess(list)
             }
-            .addOnFailureListener { onError(it) }
+            .addOnFailureListener(onError)
     }
+
+
+    fun saveSuperLeagueResults(
+        results: List<GlobalCastle>,
+        onError: (Exception) -> Unit = {}
+    ) {
+        results.forEach { castle ->
+            val ref = db
+                .collection("global_superleague_ranking")
+                .document(castle.id)
+
+            db.runTransaction { transaction ->
+                val snapshot = transaction.get(ref)
+
+                if (snapshot.exists()) {
+                    transaction.update(
+                        ref,
+                        mapOf(
+                            "wins" to FieldValue.increment(castle.wins.toLong()),
+                            "updatedAt" to FieldValue.serverTimestamp()
+                        )
+                    )
+                } else {
+                    transaction.set(
+                        ref,
+                        mapOf(
+                            "castleId" to castle.id,
+                            "title" to castle.title,
+                            "imageUrl" to castle.imageUrl,
+                            "wins" to castle.wins,
+                            "updatedAt" to FieldValue.serverTimestamp()
+                        )
+                    )
+                }
+            }.addOnFailureListener {
+                onError(it)
+            }
+        }
+    }
+
 }
