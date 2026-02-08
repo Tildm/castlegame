@@ -2,6 +2,7 @@ package com.example.castlegame.ui.game
 
 import GlobalRankingScreen
 import LeagueRankingScreen
+import UserSuperLeagueRankingScreen
 import WinnerScreen
 import android.annotation.SuppressLint
 import android.os.Build
@@ -27,7 +28,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import android.content.res.Configuration
 import android.util.Log
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 
@@ -182,10 +182,18 @@ fun GameScreen(
 
                                         GlobalRankingScreen(
                                             ranking = state.globalRanking,
-                                            onBack = viewModel::backToMenu
+                                            //onBack = viewModel::backToMenu,
+                                            onContinue = viewModel::goToUserSuperLeagueRanking
+
                                         )
                                     }
 
+                                    GamePhase.USER_SUPERLEAGUE_RANKING -> {
+                                        UserSuperLeagueRankingScreen(
+                                            ranking = state.userSuperLeagueRanking,
+                                            onBackToMenu = viewModel::backToMenu
+                                        )
+                                    }
 
                                 }
 

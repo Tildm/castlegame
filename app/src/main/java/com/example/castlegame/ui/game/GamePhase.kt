@@ -9,5 +9,6 @@ enum class GamePhase {
     SUPERLEAGUE_WINNER,
     SUPERLEAGUE_RANKING,
 
+   USER_SUPERLEAGUE_RANKING
 }
 

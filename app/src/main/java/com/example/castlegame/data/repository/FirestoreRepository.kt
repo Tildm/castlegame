@@ -107,7 +107,7 @@ class FirestoreRepository(
                     transaction.update(
                         ref,
                         mapOf(
-                            "wins" to FieldValue.increment(castle.wins.toLong()),
+                            "wins" to FieldValue.increment(castle.wins),
                             "updatedAt" to FieldValue.serverTimestamp()
                         )
                     )

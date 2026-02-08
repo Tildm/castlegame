@@ -30,7 +30,9 @@ class LeagueRepository {
             val item = CastleItem(
                 imageUrl = castle.image.firstOrNull()?.url.orEmpty(),
                 title = castle.title,
-                id = UUID.randomUUID().toString(),
+               // id = UUID.randomUUID().toString(),
+                id = castle.id,
+                //id = castle.title.replace(" ", "_").lowercase(), // Consistent ID based on title,
                 text = castle.title // Using title as text since ApiCastle doesn't have a text field
             )
 
@@ -83,53 +85,6 @@ class LeagueRepository {
             )
         }
     }
-
-
-
-
-
-    /*
-    fun saveLeagueResult(
-        leagueId: String,
-        winner: CastleItem?,
-        userId: String?
-    ) {
-        val db = FirebaseFirestore.getInstance()
-
-        // 1️⃣ User eredmény
-        db.collection("users")
-            .document(userId)
-            .collection("leagues")
-            .document(leagueId)
-            .set(
-                mapOf(
-                    "winnerId" to winner.id,
-                    "finishedAt" to FieldValue.serverTimestamp()
-                )
-            )
-
-        // 2️⃣ 🌍 Globális aggregáció
-        val globalRef = db.collection("global_leagues")
-            .document(leagueId)
-            .collection("castles")
-            .document(winner.id)
-
-        db.runTransaction { tx ->
-            val snapshot = tx.get(globalRef)
-            val currentWins = snapshot.getLong("wins") ?: 0
-
-            tx.set(
-                globalRef,
-                mapOf(
-                    "title" to winner.title,
-                    "imageUrl" to winner.imageUrl,
-                    "wins" to currentWins + 1
-                ),
-                SetOptions.merge()
-            )
-        }
-    }
-    */
 
 }
 

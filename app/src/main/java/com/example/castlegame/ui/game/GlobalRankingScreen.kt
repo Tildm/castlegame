@@ -22,14 +22,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.castlegame.data.model.CastleItem
 import com.example.castlegame.data.model.GlobalCastle
 
 
 @Composable
 fun GlobalRankingScreen(
     ranking: List<GlobalCastle>,
-    onBack: () -> Unit
+    onContinue: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -69,10 +71,10 @@ fun GlobalRankingScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = onBack,
+            onClick = onContinue,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Back to menu")
+            Text("Your Super League")
         }
     }
 }
@@ -117,11 +119,10 @@ fun GlobalRankingRow(
     }
 }
 
-/*
 @Composable
-fun GlobalRankingScreen(
-    ranking: List<GlobalCastle>,
-    onBack: () -> Unit
+fun UserSuperLeagueRankingScreen(
+    ranking: List<Pair<CastleItem, Int>>,  // ✅ Now includes scores
+    onBackToMenu: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -129,79 +130,31 @@ fun GlobalRankingScreen(
             .padding(16.dp)
     ) {
         Text(
-            text = "🌍 International Ranking",
-            style = MaterialTheme.typography.headlineMedium
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (ranking.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f)
-            ) {
-                itemsIndexed(ranking) { index, castle ->
-                    GlobalRankingRow(
-                        position = index + 1,
-                        castle = castle
-                    )
-                }
-            }
-
-        }}}
-
-@Composable
-fun GlobalRankingRow(position: Int,
-                     castle: GlobalCastle) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "$position.",
-            modifier = Modifier.width(32.dp),
+            text = "🏰 Your Super League Ranking",
+            fontSize = 22.sp,
             fontWeight = FontWeight.Bold
         )
 
-        AsyncImage(
-            model = castle.imageUrl,
-            contentDescription = castle.title,
-            modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(8.dp)),
-            contentScale = ContentScale.Crop
-        )
+        Spacer(Modifier.height(16.dp))
 
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(
+        LazyColumn(
             modifier = Modifier.weight(1f)
         ) {
-            Text(castle.title, fontWeight = FontWeight.SemiBold)
-            Text(
-                text = "Wins: ${castle.wins}",
-                style = MaterialTheme.typography.bodySmall
-            )
+            itemsIndexed(ranking) { index, (castle, wins) ->  // ✅ Destructure the pair
+                RankingRow(
+                    position = index + 1,
+                    castle = castle,
+                    score = wins  // ✅ Use actual win count
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
         Button(
-            onClick = onBack,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onBackToMenu
         ) {
             Text("Back to menu")
         }
-    }}
+    }
+}
 
-*/

@@ -67,7 +67,7 @@ class GameViewModel : ViewModel() {
     }
 
     fun selectLeague(league: League) {
-        Log.d("GameViewModel", "selectLeague: $league")
+       // Log.d("GameViewModel", "selectLeague: $league")
 
         // Clear win counts for the new league
         winCounts.clear()
@@ -96,14 +96,14 @@ class GameViewModel : ViewModel() {
 
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     fun onCastleSelected(index: Int) {
-        Log.d("GameViewModel", "onCastleSelected START, index=$index")
+       // Log.d("GameViewModel", "onCastleSelected START, index=$index")
 
         val currentPhase = _uiState.value.phase
 
         if (currentPhase != GamePhase.PLAYING &&
             currentPhase != GamePhase.SUPERLEAGUE_PLAYING
         ) {
-            Log.d("GameViewModel", "onCastleSelected IGNORED, phase=$currentPhase")
+         //   Log.d("GameViewModel", "onCastleSelected IGNORED, phase=$currentPhase")
             return
         }
 
@@ -117,7 +117,7 @@ class GameViewModel : ViewModel() {
 
             winCounts[winner.id] = (winCounts[winner.id] ?: 0) + 1
 
-            Log.d("GameViewModel", "shuffledPairs in CastleSelected = $shuffledPairs")
+           // Log.d("GameViewModel", "shuffledPairs in CastleSelected = $shuffledPairs")
 
             if (shuffledPairs.isEmpty()) {
                 Log.d("GameViewModel", "if shuffledPairs empty in CastleSelected")
@@ -131,7 +131,7 @@ class GameViewModel : ViewModel() {
                 nextPair()
             }
 
-            Log.d("GameViewModel", "onCastleSelected END")
+            //Log.d("GameViewModel", "onCastleSelected END")
         }
     }
 
@@ -139,7 +139,7 @@ class GameViewModel : ViewModel() {
 
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     fun nextPair() {
-        Log.d("GameViewModel", "nextPair() called, shuffled size = ${shuffledPairs.size}")
+       // Log.d("GameViewModel", "nextPair() called, shuffled size = ${shuffledPairs.size}")
 
         val phase = _uiState.value.phase
 
@@ -147,7 +147,7 @@ class GameViewModel : ViewModel() {
             phase != GamePhase.PLAYING &&
             phase != GamePhase.SUPERLEAGUE_PLAYING
         ) {
-            Log.d("GameViewModel", "nextPair SKIPPED, phase=$phase")
+           // Log.d("GameViewModel", "nextPair SKIPPED, phase=$phase")
             return
         }
 
@@ -157,7 +157,7 @@ class GameViewModel : ViewModel() {
 
             finishLeague()
 
-            Log.d("GameViewModel", "FinishLeague call")
+           // Log.d("GameViewModel", "FinishLeague call")
             return
         }
 
@@ -203,10 +203,10 @@ class GameViewModel : ViewModel() {
         val league = _uiState.value.currentLeague ?: return
         val updated = _uiState.value.completedLeagues + league
 
-        Log.d("GameViewModel", "finishLeague CALLED")
-        Log.d("GameViewModel", "Current phase BEFORE update: ${state.phase}")
-        Log.d("GameViewModel", "league castles = ${_uiState.value.leagues[league]}")
-        Log.d("GameViewModel", "winCounts = $winCounts")  // ← ADD THIS DEBUG
+       // Log.d("GameViewModel", "finishLeague CALLED")
+      //  Log.d("GameViewModel", "Current phase BEFORE update: ${state.phase}")
+      //  Log.d("GameViewModel", "league castles = ${_uiState.value.leagues[league]}")
+       // Log.d("GameViewModel", "winCounts = $winCounts")  // ← ADD THIS DEBUG
 
         // ✅ FIX: Use winCounts instead of tapCounts
         val winnerId = winCounts.maxByOrNull { it.value }?.key
@@ -239,7 +239,7 @@ class GameViewModel : ViewModel() {
                 userId = uid,
                 result = result,
                 onSuccess = {
-                    Log.d("Firestore", "League ${league.name} saved")
+                  //  Log.d("Firestore", "League ${league.name} saved")
                 },
                 onError = {
                     Log.e("Firestore", "Save failed", it)
@@ -268,8 +268,8 @@ class GameViewModel : ViewModel() {
 
         leagueTopResults[league] = top2Castles
 
-        Log.d("GameViewModel", "TOP2 for ${league.name}: ${top2Castles.map { it.title }}")
-        Log.d("GameViewModel", "TOP2 for ${league.name}: $top2Castles")
+        //Log.d("GameViewModel", "TOP2 for ${league.name}: ${top2Castles.map { it.title }}")
+       // Log.d("GameViewModel", "TOP2 for ${league.name}: $top2Castles")
 
         _uiState.update {
             it.copy(
@@ -289,8 +289,8 @@ class GameViewModel : ViewModel() {
             )
         }
 
-        Log.d("GameViewModel", "Phase AFTER update: ${_uiState.value.phase}")
-        Log.d("GameViewModel", "leagueWinner AFTER update: ${_uiState.value.leagueWinner}")
+       // Log.d("GameViewModel", "Phase AFTER update: ${_uiState.value.phase}")
+      //  Log.d("GameViewModel", "leagueWinner AFTER update: ${_uiState.value.leagueWinner}")
     }
 
 
@@ -316,7 +316,7 @@ class GameViewModel : ViewModel() {
 
         if (completed == total) {
             // All leagues done → Start SuperLeague
-            Log.d("GameViewModel", "All leagues completed, starting SuperLeague")
+         //   Log.d("GameViewModel", "All leagues completed, starting SuperLeague")
             startSuperLeague()
         } else {
             // More leagues to play → Back to league selection
@@ -342,11 +342,7 @@ class GameViewModel : ViewModel() {
             list.drop(index + 1).map { item to it }
         }.shuffled()
 
-/*    fun clearLeagueWinner() {
-        _uiState.update {
-            it.copy(leagueWinner = null)
-        }
-    }*/
+
 
     fun getLeagueRanking(league: League): List<Pair<CastleItem, Int>> {
         val items = uiState.value.leagues[league].orEmpty()
@@ -362,15 +358,19 @@ class GameViewModel : ViewModel() {
     private fun startSuperLeague() {
         Log.d("GameViewModel", "SuperLeague here starts")
 
-        winCounts.clear()
+
 
         val top2PerLeague = mutableListOf<CastleItem>()
         League.entries.forEach { league ->
             val top2 = getLeagueRanking(league).take(2).map { it.first }  // ← Extract CastleItem from Pair
             top2PerLeague.addAll(top2)
         }
+
+        winCounts.clear()
+
         shuffledPairs = generateAllPairs(top2PerLeague).shuffled().toMutableList()
         val totalGames = shuffledPairs.size
+        Log.d("GameViewModel", "totalGames = $top2PerLeague")
         // Get the first pair directly
         val firstPair = if (shuffledPairs.isNotEmpty()) {
             shuffledPairs.removeAt(0)
@@ -429,6 +429,8 @@ class GameViewModel : ViewModel() {
             )
         }.sortedByDescending { it.wins }
 
+
+
         _uiState.update { state ->
             state.copy(
                 phase = GamePhase.SUPERLEAGUE_WINNER,
@@ -445,6 +447,7 @@ class GameViewModel : ViewModel() {
                 Log.e("Firestore", "Saving global ranking failed", it)
             }
         )
+        Log.d("GameViewModel", "globalRanking = $globalRanking")
 
     }
 
@@ -472,6 +475,7 @@ class GameViewModel : ViewModel() {
                 _uiState.update {
                     it.copy(globalRanking = list)
                 }
+
             },
             onError = {
                 Log.e("Firestore", "Global ranking load failed", it)
@@ -498,15 +502,34 @@ class GameViewModel : ViewModel() {
                 remainingGames = 0,
                 selectedIndex = null,
                 currentLeague = null,
-                //leagues = emptyMap(),
                 leagueLocked = false,
-
-
                 currentPair = null,
-               // shuffledPairs = emptyList(),
             )
         }
     }
 
+    private fun buildUserSuperLeagueRanking(): List<Pair<CastleItem, Int>> {
+        Log.d("GameViewModel", "buildUserSuperLeagueRanking")
+        val superLeagueCastles = _uiState.value.superLeagueCastles
+        return winCounts
+            .toList()
+            .sortedByDescending { it.second }
+            .mapNotNull { (castleId, wins) ->
+                superLeagueCastles.firstOrNull { it.id == castleId }?.let { castle ->
+                    castle to wins  // ✅ Return both castle and win count
+                }
+            }
+    }
+
+
+
+    fun goToUserSuperLeagueRanking() {
+        _uiState.update {
+            it.copy(
+                userSuperLeagueRanking = buildUserSuperLeagueRanking(),
+                phase = GamePhase.USER_SUPERLEAGUE_RANKING
+            )
+        }
+    }
 
 }
