@@ -1,5 +1,6 @@
 import androidx.benchmark.traceprocessor.Row
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -30,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.castlegame.data.model.CastleItem
+import com.example.castlegame.data.model.GlobalCastle
 import com.example.castlegame.data.model.League
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,6 +39,7 @@ import com.example.castlegame.data.model.League
 fun LeagueRankingScreen(
     league: League,
     ranking: List<Pair<CastleItem, Int>>,
+    onCastleClick: (CastleItem) -> Unit,
     onContinue: () -> Unit
 ) {
     Scaffold(
@@ -62,7 +65,8 @@ fun LeagueRankingScreen(
                     RankingRow(
                         position = index + 1,
                         castle = castle,
-                        score = score
+                        score = score,
+                        onClick = { onCastleClick(castle) }
                     )
                 }
             }
@@ -83,11 +87,13 @@ fun LeagueRankingScreen(
 fun RankingRow(
     position: Int,
     castle: CastleItem,
-    score: Int
+    score: Int,
+    onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onClick() }
             .height(72.dp)
             .background(
                 Color.LightGray.copy(alpha = 0.15f),

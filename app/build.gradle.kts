@@ -68,6 +68,8 @@ dependencies {
     implementation(libs.androidx.benchmark.traceprocessor)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.runtime)
+    implementation(libs.androidx.camera.camera2.pipe)
+    implementation(libs.androidx.material3)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

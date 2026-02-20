@@ -30,10 +30,17 @@ class LeagueRepository {
             val item = CastleItem(
                 imageUrl = castle.image.firstOrNull()?.url.orEmpty(),
                 title = castle.title,
-               // id = UUID.randomUUID().toString(),
+                // id = UUID.randomUUID().toString(),
                 id = castle.id,
                 //id = castle.title.replace(" ", "_").lowercase(), // Consistent ID based on title,
-                text = castle.title // Using title as text since ApiCastle doesn't have a text field
+                country = castle.country,
+                description = castle.description,
+                wikiUrl = castle.wikiUrl,
+                text = castle.text,
+                built = castle.built,
+                style = castle.style,
+                visiting = castle.visiting,
+                location = castle.location
             )
 
             when (castle.group) {

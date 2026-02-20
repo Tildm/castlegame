@@ -8,7 +8,8 @@ enum class GamePhase {
     SUPERLEAGUE_PLAYING,   // 🆕 8 vár egymás ellen
     SUPERLEAGUE_WINNER,
     SUPERLEAGUE_RANKING,
+   USER_SUPERLEAGUE_RANKING,
+    CASTLE_INFO
 
-   USER_SUPERLEAGUE_RANKING
 }
 

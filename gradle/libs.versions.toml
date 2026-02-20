@@ -1,5 +1,5 @@
 [versions]
-agp = "9.0.0"
+agp = "9.0.1"
 kotlin = "2.3.0"
 coreKtx = "1.17.0"
 junit = "4.13.2"
@@ -20,6 +20,8 @@ runtime = "1.10.1"
 benchmarkTraceprocessor = "1.4.1"
 ui = "1.10.2"
 runtimeVersion = "1.10.2"
+cameraCamera2Pipe = "1.6.0-beta01"
+material3 = "1.4.0"
 
 
 [libraries]
@@ -52,6 +54,8 @@ androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime
 androidx-benchmark-traceprocessor = { group = "androidx.benchmark", name = "benchmark-traceprocessor", version.ref = "benchmarkTraceprocessor" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
 androidx-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtimeVersion" }
+androidx-camera-camera2-pipe = { group = "androidx.camera", name = "camera-camera2-pipe", version.ref = "cameraCamera2Pipe" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 
 
 [plugins]

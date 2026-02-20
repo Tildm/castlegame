@@ -4,5 +4,13 @@ data class GlobalCastle(
     val id: String = "",
     val title: String = "",
     val imageUrl: String = "",
-    val wins: Long = 0
-)
+    val wins: Int = 0,
+    val description: String,
+    val wikiUrl: String = "",
+    val country: String = "",
+    val built: String = "",
+    val style: String = "",
+    val visiting: String = "",
+    val location: String = ""
+    )
+

@@ -43,6 +43,13 @@ class GameViewModel : ViewModel() {
 
     private val leagueTopResults = mutableMapOf<League, List<CastleItem>>()
 
+    private var lastRankingPhase: GamePhase? = null
+
+    var selectedCastleForInfo: CastleItem? = null
+        private set
+
+    var totalGames: Int = 0
+
 
 
     init {
@@ -75,7 +82,7 @@ class GameViewModel : ViewModel() {
         val castles = _uiState.value.leagues[league] ?: return
 
         shuffledPairs = generateAllPairs(castles).shuffled().toMutableList()
-        val totalGames = shuffledPairs.size
+        totalGames = shuffledPairs.size
 
         val firstPair = if (shuffledPairs.isNotEmpty()) {
             shuffledPairs.removeAt(0)
@@ -92,7 +99,6 @@ class GameViewModel : ViewModel() {
             )
         }
     }
-
 
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     fun onCastleSelected(index: Int) {
@@ -369,8 +375,8 @@ class GameViewModel : ViewModel() {
         winCounts.clear()
 
         shuffledPairs = generateAllPairs(top2PerLeague).shuffled().toMutableList()
-        val totalGames = shuffledPairs.size
-        Log.d("GameViewModel", "totalGames = $top2PerLeague")
+        totalGames = shuffledPairs.size
+        Log.d("GameViewModel", "totalGames = $totalGames")
         // Get the first pair directly
         val firstPair = if (shuffledPairs.isNotEmpty()) {
             shuffledPairs.removeAt(0)
@@ -425,7 +431,14 @@ class GameViewModel : ViewModel() {
                 id = castle.id,
                 title = castle.title,
                 imageUrl = castle.imageUrl,
-                wins = (winCounts[castle.id] ?: 0).toLong()
+                wins = winCounts[castle.id] ?: 0,
+                description = castle.description,
+                visiting = castle.visiting,
+                wikiUrl = castle.wikiUrl,
+                country = castle.country,
+                location = castle.location,
+                style = castle.style,
+                built = castle.built,
             )
         }.sortedByDescending { it.wins }
 
@@ -441,13 +454,20 @@ class GameViewModel : ViewModel() {
                 remainingGames = 0
             )
         }
+
         firestoreRepository.saveSuperLeagueResults(
             results = globalRanking,
-            onError = {
-                Log.e("Firestore", "Saving global ranking failed", it)
+            onError = { e ->
+                Log.w(
+                    "Firestore",
+                    "Saved locally, will sync later (offline or permission issue)",
+                    e
+                )
             }
         )
+
         Log.d("GameViewModel", "globalRanking = $globalRanking")
+
 
     }
 
@@ -465,7 +485,7 @@ class GameViewModel : ViewModel() {
                 canProceed = false
             )
         }
-        loadGlobalRanking()
+     loadGlobalRanking()
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -532,4 +552,29 @@ class GameViewModel : ViewModel() {
         }
     }
 
+
+    fun openCastleInfo(castle: CastleItem) {
+        lastRankingPhase = _uiState.value.phase  // ← _uiState not _state
+        selectedCastleForInfo = castle
+        _uiState.update { it.copy(          // ← _uiState not _state
+            phase = GamePhase.CASTLE_INFO,
+            castleForInfo = castle
+        )}
+    }
+
+    fun backFromCastleInfo() {
+        _uiState.update { it.copy(
+            phase = lastRankingPhase ?: GamePhase.SELECT_LEAGUE,
+            castleForInfo = null
+        )}
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun backToGlobalRanking() {
+        _uiState.update {
+            it.copy(phase = GamePhase.SUPERLEAGUE_RANKING)
+        }
+        loadGlobalRanking()
+    }
 }
+

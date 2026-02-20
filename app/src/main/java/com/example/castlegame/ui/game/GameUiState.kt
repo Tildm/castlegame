@@ -36,9 +36,13 @@ data class GameUiState(
     val globalRanking: List<GlobalCastle> = emptyList(),
    // val userSuperLeagueRanking: List<CastleItem> = emptyList()
 
-    val userSuperLeagueRanking: List<Pair<CastleItem, Int>> = emptyList()  // Update type
+    val userSuperLeagueRanking: List<Pair<CastleItem, Int>> = emptyList(),  // Update type
 
+    val errorMessage: String? = null,
 
+    val infoMessage: String? = null,
+
+    val castleForInfo: CastleItem? = null
 
 )
 

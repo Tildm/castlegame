@@ -3,7 +3,6 @@ package com.example.castlegame.ui.game
 import GlobalRankingScreen
 import LeagueRankingScreen
 import UserSuperLeagueRankingScreen
-import WinnerScreen
 import android.annotation.SuppressLint
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -27,9 +26,18 @@ import com.example.castlegame.data.model.League
 import androidx.compose.ui.platform.LocalConfiguration
 import android.content.res.Configuration
 import android.util.Log
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.castlegame.R
+import toCastleItem
 
+//var isLandscape: Boolean = true
 
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
@@ -40,7 +48,7 @@ fun GameScreen(
     viewModel: GameViewModel = viewModel(),
 
 
-) {
+    ) {
     val state by viewModel.uiState.collectAsState()
 
     Log.d("GameScreen", "RECOMPOSE: phase=${state.phase}, winner=${state.leagueWinner != null}, league=${state.currentLeague}")
@@ -58,18 +66,25 @@ fun GameScreen(
                 isLeagueLocked = state.leagueLocked  // ← Add this line
             )
         },
-
         bottomBar = {
             GameBottomBar(
                 remaining = state.remainingGames,
+                total = viewModel.totalGames,
+                visible = state.phase == GamePhase.PLAYING ||
+                        state.phase == GamePhase.SUPERLEAGUE_PLAYING
             )
         }
+        /*    bottomBar = {
+                GameBottomBar(
+                    remaining = state.remainingGames,
+                )
+            }*/
     ) { padding ->
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.DarkGray)
+                .background(Color.Black)
                 .padding(padding)
                 .padding(
                     top = if (isLandscape) 0.dp else 16.dp,
@@ -79,129 +94,213 @@ fun GameScreen(
         ) {
 
             // 🔓 LOGOUT SOR
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 3.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onLogout) {
-                    Text("Logout")
-                }
-            }
+            /* Row(
+                 modifier = Modifier
+                     .fillMaxWidth()
+                     .padding(horizontal = 16.dp, vertical = 3.dp),
+                 horizontalArrangement = Arrangement.End
+             ) {
+                 TextButton(onClick = onLogout) {
+                     Text(
+                         color = Color(0xFF1478F6),
+                         text = "Logout"
+                     )
+                 }
+             }*/
 
             // 🎮 JÁTÉKTÉR
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
+                    .padding(top = if (isLandscape) 10.dp else 16.dp),
                 contentAlignment = Alignment.Center
             ) {
+                // ← Background for ALL screens except SELECT_LEAGUE
+                if (state.phase != GamePhase.SELECT_LEAGUE) {
+                    Image(
+                        painter =  painterResource(id = R.drawable.backround_for_castle_games3),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
 
+                when (state.phase) {
 
-                                when (state.phase) {
+                    GamePhase.SELECT_LEAGUE -> {
+                        Log.d("GameScreen", "Rendering: SELECT_LEAGUE")
 
-                                    GamePhase.SELECT_LEAGUE -> {
-                                        Log.d("GameScreen", "Rendering: SELECT_LEAGUE")  // ← ADD
+                        Box(modifier = Modifier.fillMaxSize()) {
 
-                                        Text("Select a league")
-                                    }
+                            // Background image
+                            Image(
+                                painter = if(isLandscape) painterResource(id = R.drawable.backround_for_castle_games3_landscape)  else painterResource(id = R.drawable.background_select_league),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
 
-                                    GamePhase.PLAYING -> {
-                                        Log.d("GameScreen", "Rendering: PLAYING")  // ← ADD
-
-                                        state.currentPair?.let { pair ->
-                                            CastleRow(
-                                                pair = pair,
-                                                selectedIndex = state.selectedIndex,
-                                                enabled = true,
-                                                onSelect = viewModel::onCastleSelected
-                                            )
-                                        }
-                                    }
-
-                                    GamePhase.LEAGUE_WINNER -> {
-                                        Log.d("GameScreen", "Rendering: LEAGUE_WINNER")  // ← ADD
-
-                                        val league = state.currentLeague
-                                        val winner = state.leagueWinner
-
-                                        Log.d("GameScreen", "SHOW WINNER: ${state.leagueWinner}")
-
-                                        if (league != null && winner != null) {
-                                            WinnerScreen(
-                                                league = league,
-                                                winner = winner,
-                                                onContinue = viewModel::continueFromWinner
-                                            )
-                                        } else {
-                                            // 💣 ide soha nem kéne jutni, de ne crasheljen
-                                            CircularProgressIndicator()
-                                        }
-                                    }
-
-                                    GamePhase.LEAGUE_RANKING -> {
-                                        Log.d("GameScreen", "Rendering: LEAGUE_RANKING")  // ← ADD
-
-                                        LeagueRankingScreen(
-                                            league = state.currentLeague!!,
-                                            ranking = viewModel.getLeagueRanking(state.currentLeague!!),
-                                            onContinue = viewModel::continueFromRanking
-                                        )
-                                    }
-                                    GamePhase.SUPERLEAGUE_PLAYING -> {
-                                        Log.d("GameScreen", "Rendering: SUPERLEAGUE_PLAYING")
-
-                                        state.currentPair?.let { pair ->
-                                            CastleRow(
-                                                pair = pair,
-                                                selectedIndex = state.selectedIndex,
-                                                enabled = true,
-                                                onSelect = viewModel::onCastleSelected
-                                            )
-                                        } ?: run {
-                                            CircularProgressIndicator()
-                                        }
-                                    }
-                                    GamePhase.SUPERLEAGUE_WINNER -> {
-                                        Log.d("GameScreen", "Rendering: SUPERLEAGUE_WINNER")
-
-                                        val winner = state.superLeagueWinner
-
-                                        if (winner != null) {
-                                            WinnerScreen(
-                                                league = null, // ⬅️ fontos, lásd lent
-                                                winner = state.superLeagueWinner!!,
-                                                onContinue = viewModel::continueFromSuperLeagueWinner
-                                            )
-                                        } else {
-                                            CircularProgressIndicator()
-                                        }
-                                    }
-
-                                    GamePhase.SUPERLEAGUE_RANKING -> {
-                                        Log.d("GameScreen", "Rendering: SUPERLEAGUE_RANKING")
-
-                                        GlobalRankingScreen(
-                                            ranking = state.globalRanking,
-                                            //onBack = viewModel::backToMenu,
-                                            onContinue = viewModel::goToUserSuperLeagueRanking
-
-                                        )
-                                    }
-
-                                    GamePhase.USER_SUPERLEAGUE_RANKING -> {
-                                        UserSuperLeagueRankingScreen(
-                                            ranking = state.userSuperLeagueRanking,
-                                            onBackToMenu = viewModel::backToMenu
-                                        )
-                                    }
-
-                                }
-
-
-                            }
+                            // Optional dark overlay so the top bar league names are visible
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.15f))
+                            )
                         }
                     }
+                    /*    GamePhase.SELECT_LEAGUE -> {
+                            Log.d("GameScreen", "Rendering: SELECT_LEAGUE")  // ← ADD
+
+                            Text("Select a league")
+                        }*/
+
+                    GamePhase.PLAYING -> {
+                        Log.d("GameScreen", "Rendering: PLAYING")  // ← ADD
+
+                        state.currentPair?.let { pair ->
+                            CastleRow(
+                                pair = pair,
+                                selectedIndex = state.selectedIndex,
+                                enabled = true,
+                                onSelect = viewModel::onCastleSelected
+                            )
+                        }
+                    }
+
+                    GamePhase.LEAGUE_WINNER -> {
+                        Log.d("GameScreen", "Rendering: LEAGUE_WINNER")  // ← ADD
+
+                        val league = state.currentLeague
+                        val winner = state.leagueWinner
+
+                        Log.d("GameScreen", "SHOW WINNER: ${state.leagueWinner}")
+
+                        if (league != null && winner != null) {
+                            WinnerScreen(
+                                league = league,
+                                winner = winner,
+                                onContinue = viewModel::continueFromWinner
+                            )
+                        } else {
+                            // 💣 ide soha nem kéne jutni, de ne crasheljen
+                            CircularProgressIndicator()
+                        }
+                    }
+
+                    GamePhase.LEAGUE_RANKING -> {
+
+                        LeagueRankingScreen(
+                            league = state.currentLeague!!,
+                            ranking = viewModel.getLeagueRanking(state.currentLeague!!),
+                            onContinue = viewModel::continueFromRanking,
+                            onCastleClick = { castle ->
+                                viewModel.openCastleInfo(castle)
+                            }
+                        )
+                    }
+
+                    /*    GamePhase.LEAGUE_RANKING -> {
+                            Log.d("GameScreen", "Rendering: LEAGUE_RANKING")  // ← ADD
+
+                            LeagueRankingScreen(
+                                league = state.currentLeague!!,
+                                ranking = viewModel.getLeagueRanking(state.currentLeague!!),
+                                onContinue = viewModel::continueFromRanking
+                            )
+                        }*/
+
+                    GamePhase.SUPERLEAGUE_PLAYING -> {
+                        Log.d("GameScreen", "Rendering: SUPERLEAGUE_PLAYING")
+
+                        state.currentPair?.let { pair ->
+                            CastleRow(
+                                pair = pair,
+                                selectedIndex = state.selectedIndex,
+                                enabled = true,
+                                onSelect = viewModel::onCastleSelected
+                            )
+                        } ?: run {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    GamePhase.SUPERLEAGUE_WINNER -> {
+                        Log.d("GameScreen", "Rendering: SUPERLEAGUE_WINNER")
+
+                        val winner = state.superLeagueWinner
+
+                        if (winner != null) {
+                            WinnerScreen(
+                                league = null, // ⬅️ fontos, lásd lent
+                                winner = state.superLeagueWinner!!,
+                                onContinue = viewModel::continueFromSuperLeagueWinner
+                            )
+                        } else {
+                            CircularProgressIndicator()
+                        }
+                    }
+
+                    GamePhase.SUPERLEAGUE_RANKING -> {
+
+                        GlobalRankingScreen(
+                            ranking = state.globalRanking,
+                            onContinue = viewModel::goToUserSuperLeagueRanking,
+                            onCastleClick = { globalCastle ->
+                                viewModel.openCastleInfo(globalCastle.toCastleItem())
+                            }
+                        )
+                    }
+
+
+                    /*          GamePhase.SUPERLEAGUE_RANKING -> {
+                                  Log.d("GameScreen", "Rendering: SUPERLEAGUE_RANKING")
+
+                                  GlobalRankingScreen(
+                                      ranking = state.globalRanking,
+                                      //onBack = viewModel::backToMenu,
+                                      onContinue = viewModel::goToUserSuperLeagueRanking
+
+                                  )
+                              }*/
+
+                    GamePhase.USER_SUPERLEAGUE_RANKING -> {
+                        UserSuperLeagueRankingScreen(
+                            ranking = state.userSuperLeagueRanking,
+                            onCastleClick = { castle ->
+                                viewModel.openCastleInfo(castle)
+                            },
+                            onBackToMenu = viewModel::backToMenu,
+                            onBackToInternational = viewModel::backToGlobalRanking
+                        )
+                    }
+
+                    /*    GamePhase.USER_SUPERLEAGUE_RANKING -> {
+                            UserSuperLeagueRankingScreen(
+                                ranking = state.userSuperLeagueRanking,
+                                onBackToMenu = viewModel::backToMenu
+                            )
+                        }*/
+
+
+                    GamePhase.CASTLE_INFO -> {
+                        val castle = state.castleForInfo
+                        if (castle != null) {
+                            WinnerScreen(
+                                league = null,
+                                winner = castle,
+                                onContinue = viewModel::backFromCastleInfo
+                                // onBack = viewModel::backFromCastleInfo
+                            )
+                        } else {
+                            CircularProgressIndicator()
+                        }
+                    }
+
                 }
+
+
+            }
+        }
+    }
+}
 
 
 @Composable
@@ -234,7 +333,7 @@ fun LeagueTopBar(
                 Text(
                     text = league.name,
                     fontWeight = FontWeight.Bold,
-                    color = if (enabled) Color.Blue else Color.Gray,
+                    color = if (enabled) Color(0xFF1478F6) else Color.Gray,
                     modifier = Modifier.clickable(
                         enabled = enabled
                     ) {
@@ -326,8 +425,8 @@ fun CastleRow(
 
         CastleCard(
             castle = pair.second,
-           // isSelected = selectedIndex == 1,
-           // isDimmed = selectedIndex == 0,
+            // isSelected = selectedIndex == 1,
+            // isDimmed = selectedIndex == 0,
             enabled = enabled,
             modifier = Modifier.weight(1f),
             onClick = { onSelect(1) }
@@ -337,21 +436,61 @@ fun CastleRow(
 
 @Composable
 fun GameBottomBar(
-    remaining: Int
+    remaining: Int,
+    total: Int,
+    visible: Boolean
 ) {
-    Surface(
-        tonalElevation = 8.dp,
-        modifier = Modifier.height(44.dp)
+    if (!visible) return
+
+    val progress = if (total > 0) remaining.toFloat() / total.toFloat() else 0f
+
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = 16.dp,   // ← matches CastleRow's horizontal padding
+                end = 16.dp,
+                bottom = 56.dp
+            ),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+        Card(
+            modifier = Modifier.fillMaxWidth(),  // ← fills the already-inset Box
+            shape = RoundedCornerShape(30.dp),
+            elevation = CardDefaults.cardElevation(12.dp)
         ) {
-            Text(
-                text = "Games left: $remaining",
-                fontSize = 16.sp,
-                color = Color.Blue
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()  // ← Ensure Column fills the Card width
+                    .padding(
+                        horizontal = 20.dp,
+                        vertical = if (isLandscape) 8.dp else 16.dp
+                    ),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (!isLandscape) {
+                    Text(
+                        text = "$remaining GAMES LEFT",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1478F6)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(if (isLandscape) 5.dp else 10.dp)
+                        .clip(RoundedCornerShape(50)),
+                    trackColor = Color.LightGray,
+                    color = Color(0xFF1478F6)
+                )
+            }
         }
     }
 }

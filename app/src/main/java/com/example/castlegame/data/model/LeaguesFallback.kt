@@ -1,3 +1,4 @@
+/*
 import com.example.castlegame.data.model.CastleItem
 
 object LeaguesFallback {
@@ -8,13 +9,16 @@ object LeaguesFallback {
             text = "Fallback East Castle 1",
             id = "1",
             title = TODO(),
-            
+            country = "TODO()",
+            wikiUrl = TODO(),
         ),
         CastleItem(
             imageUrl = "",
             text = "Fallback East Castle 2",
             id = "1",
-            title = TODO()
+            title = TODO(),
+            country = TODO(),
+            wikiUrl = TODO()
         )
     )
 
@@ -23,7 +27,9 @@ object LeaguesFallback {
             imageUrl = "",
             text = "Fallback West Castle 1",
             id = "1",
-            title = TODO()
+            title = TODO(),
+            country = TODO(),
+            wikiUrl = TODO()
         )
     )
 
@@ -32,7 +38,9 @@ object LeaguesFallback {
             imageUrl = "",
             text = "Fallback North Castle 1",
             id = "1",
-            title = TODO()
+            title = TODO(),
+            country = TODO(),
+            wikiUrl = TODO()
         )
     )
 
@@ -41,7 +49,10 @@ object LeaguesFallback {
             imageUrl = "",
             text = "Fallback South Castle 1",
             id = "1",
-            title = TODO()
+            title = TODO(),
+            country = TODO(),
+            wikiUrl = TODO()
         )
     )
 }
+*/

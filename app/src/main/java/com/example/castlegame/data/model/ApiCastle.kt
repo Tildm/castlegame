@@ -10,5 +10,13 @@ data class ApiCastle(
     val title: String,
     val group: String,
     val image: List<ApiImage>,
+    val description: String,
+    val wikiUrl: String = "",
+    val country: String = "",
+    val text: String = "",
+    val built: String = "",
+    val style: String = "",
+    val visiting: String = "",
+    val location: String = ""
 )
 
