@@ -3,7 +3,6 @@ package com.example.castlegame.ui.navigation
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.*
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
 import com.example.castlegame.ui.auth.LoginScreen
 import com.example.castlegame.ui.auth.RegisterScreen

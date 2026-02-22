@@ -3,8 +3,6 @@ enum class GamePhase {
     PLAYING,
     LEAGUE_WINNER,
     LEAGUE_RANKING,
-
-
     SUPERLEAGUE_PLAYING,   // 🆕 8 vár egymás ellen
     SUPERLEAGUE_WINNER,
     SUPERLEAGUE_RANKING,

@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -23,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.castlegame.data.model.CastleItem
 import com.example.castlegame.data.model.GlobalCastle
-import toCastleItem
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -147,7 +145,8 @@ fun UserSuperLeagueRankingScreen(
                 ) {
                     Text(
                         "<",
-                        fontSize = 20.sp,
+                        modifier = Modifier.fillMaxWidth(),
+                        fontSize = 19.sp,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Start
                     )

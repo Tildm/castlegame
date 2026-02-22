@@ -1,4 +1,3 @@
-import androidx.benchmark.traceprocessor.Row
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,7 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.castlegame.data.model.CastleItem
-import com.example.castlegame.data.model.GlobalCastle
 import com.example.castlegame.data.model.League
 
 @OptIn(ExperimentalMaterial3Api::class)

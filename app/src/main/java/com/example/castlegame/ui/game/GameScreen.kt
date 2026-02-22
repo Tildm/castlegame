@@ -29,7 +29,6 @@ import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
@@ -74,11 +73,7 @@ fun GameScreen(
                         state.phase == GamePhase.SUPERLEAGUE_PLAYING
             )
         }
-        /*    bottomBar = {
-                GameBottomBar(
-                    remaining = state.remainingGames,
-                )
-            }*/
+
     ) { padding ->
 
         Column(
@@ -117,7 +112,8 @@ fun GameScreen(
                 // ← Background for ALL screens except SELECT_LEAGUE
                 if (state.phase != GamePhase.SELECT_LEAGUE) {
                     Image(
-                        painter =  painterResource(id = R.drawable.backround_for_castle_games3),
+                        painter =  painterResource(id = R.drawable.backround_for_castle_games3
+                        ),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
@@ -147,11 +143,7 @@ fun GameScreen(
                             )
                         }
                     }
-                    /*    GamePhase.SELECT_LEAGUE -> {
-                            Log.d("GameScreen", "Rendering: SELECT_LEAGUE")  // ← ADD
 
-                            Text("Select a league")
-                        }*/
 
                     GamePhase.PLAYING -> {
                         Log.d("GameScreen", "Rendering: PLAYING")  // ← ADD
@@ -198,15 +190,7 @@ fun GameScreen(
                         )
                     }
 
-                    /*    GamePhase.LEAGUE_RANKING -> {
-                            Log.d("GameScreen", "Rendering: LEAGUE_RANKING")  // ← ADD
 
-                            LeagueRankingScreen(
-                                league = state.currentLeague!!,
-                                ranking = viewModel.getLeagueRanking(state.currentLeague!!),
-                                onContinue = viewModel::continueFromRanking
-                            )
-                        }*/
 
                     GamePhase.SUPERLEAGUE_PLAYING -> {
                         Log.d("GameScreen", "Rendering: SUPERLEAGUE_PLAYING")
@@ -250,16 +234,6 @@ fun GameScreen(
                     }
 
 
-                    /*          GamePhase.SUPERLEAGUE_RANKING -> {
-                                  Log.d("GameScreen", "Rendering: SUPERLEAGUE_RANKING")
-
-                                  GlobalRankingScreen(
-                                      ranking = state.globalRanking,
-                                      //onBack = viewModel::backToMenu,
-                                      onContinue = viewModel::goToUserSuperLeagueRanking
-
-                                  )
-                              }*/
 
                     GamePhase.USER_SUPERLEAGUE_RANKING -> {
                         UserSuperLeagueRankingScreen(
@@ -272,12 +246,6 @@ fun GameScreen(
                         )
                     }
 
-                    /*    GamePhase.USER_SUPERLEAGUE_RANKING -> {
-                            UserSuperLeagueRankingScreen(
-                                ranking = state.userSuperLeagueRanking,
-                                onBackToMenu = viewModel::backToMenu
-                            )
-                        }*/
 
 
                     GamePhase.CASTLE_INFO -> {
@@ -372,7 +340,7 @@ fun CastleCard(
         Column {
             AsyncImage(
                 model = castle.imageUrl,
-                contentDescription = castle.title,
+                contentDescription = "${castle.title} - ${castle.country}",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -388,7 +356,7 @@ fun CastleCard(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = castle.title,
+                    text = "${castle.title} - ${castle.country}",
                     color = Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
@@ -425,8 +393,6 @@ fun CastleRow(
 
         CastleCard(
             castle = pair.second,
-            // isSelected = selectedIndex == 1,
-            // isDimmed = selectedIndex == 0,
             enabled = enabled,
             modifier = Modifier.weight(1f),
             onClick = { onSelect(1) }

@@ -30,9 +30,7 @@ class LeagueRepository {
             val item = CastleItem(
                 imageUrl = castle.image.firstOrNull()?.url.orEmpty(),
                 title = castle.title,
-                // id = UUID.randomUUID().toString(),
                 id = castle.id,
-                //id = castle.title.replace(" ", "_").lowercase(), // Consistent ID based on title,
                 country = castle.country,
                 description = castle.description,
                 wikiUrl = castle.wikiUrl,
@@ -44,10 +42,21 @@ class LeagueRepository {
             )
 
             when (castle.group) {
-                "East League" -> result[League.EAST]?.add(item)
-                "West League" -> result[League.WEST]?.add(item)
-                "North League" -> result[League.NORTH]?.add(item)
-                "South League" -> result[League.SOUTH]?.add(item)
+                "East League" -> result[League.EAST]?.let {
+                    if (it.size < 8) it.add(item)
+                }
+
+                "West League" -> result[League.WEST]?.let {
+                    if (it.size < 8) it.add(item)
+                }
+
+                "North League" -> result[League.NORTH]?.let {
+                    if (it.size < 8) it.add(item)
+                }
+
+                "South League" -> result[League.SOUTH]?.let {
+                    if (it.size < 8) it.add(item)
+                }
             }
         }
 

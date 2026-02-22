@@ -15,16 +15,3 @@ data class CastleItem(
     val location: String = ""
 )
 
-
-
-/*data class CastleItem(
-    val imageUrl: String,
-    val title: String,
-    val country: String,
-   // val fallbackImageRes: Int? = null,
-    val id: String,
-    val description: String,
-    val wikiUrl: String = ""
-)*/
-
-
