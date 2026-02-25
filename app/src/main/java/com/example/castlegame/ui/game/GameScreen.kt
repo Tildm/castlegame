@@ -26,6 +26,8 @@ import com.example.castlegame.data.model.League
 import androidx.compose.ui.platform.LocalConfiguration
 import android.content.res.Configuration
 import android.util.Log
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LinearProgressIndicator
@@ -34,6 +36,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.castlegame.R
+import com.example.castlegame.ui.theme.DeutschGothic
+import kotlinx.coroutines.delay
 import toCastleItem
 
 //var isLandscape: Boolean = true
@@ -112,7 +116,7 @@ fun GameScreen(
                 // ← Background for ALL screens except SELECT_LEAGUE
                 if (state.phase != GamePhase.SELECT_LEAGUE) {
                     Image(
-                        painter =  painterResource(id = R.drawable.backround_for_castle_games3
+                        painter =  painterResource(id = R.drawable.backround_for_castle_games_compass
                         ),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
@@ -125,11 +129,63 @@ fun GameScreen(
                     GamePhase.SELECT_LEAGUE -> {
                         Log.d("GameScreen", "Rendering: SELECT_LEAGUE")
 
+                        // State to track which background to show
+                        var showFirstBackground by remember { mutableStateOf(true) }
+
+                        // LaunchedEffect to alternate backgrounds every 3 seconds
+                        LaunchedEffect(Unit) {
+                            while (true) {
+                                delay(10000) // 3 seconds
+                                showFirstBackground = !showFirstBackground
+                            }
+                        }
+
+                        Box(modifier = Modifier.fillMaxSize()) {
+
+                            if (isLandscape) {
+                                // Landscape mode - single background
+                                Image(
+                                    painter = painterResource(id = R.drawable.backround_for_castle_games3_landscape),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                // Portrait mode - crossfade between two backgrounds
+                                Crossfade(
+                                    targetState = showFirstBackground,
+                                    animationSpec = tween(durationMillis = 8000), // 1 second fade
+                                    label = "background_crossfade"
+                                ) { isFirst ->
+                                    Image(
+                                        painter = if (isFirst) {
+                                            painterResource(id = R.drawable.backround_duel_europe)
+                                        } else {
+                                            painterResource(id = R.drawable.trumpet_herold_background)
+                                        },
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                            }
+
+                            // Optional dark overlay so the top bar league names are visible
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.15f))
+                            )
+                        }
+                    }
+             /*       GamePhase.SELECT_LEAGUE -> {                                //without animation
+                        Log.d("GameScreen", "Rendering: SELECT_LEAGUE")
+
                         Box(modifier = Modifier.fillMaxSize()) {
 
                             // Background image
                             Image(
-                                painter = if(isLandscape) painterResource(id = R.drawable.backround_for_castle_games3_landscape)  else painterResource(id = R.drawable.background_select_league),
+                                painter = if(isLandscape) painterResource(id = R.drawable.backround_for_castle_games3_landscape)  else painterResource(id = R.drawable.backround_duel_europe),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
@@ -142,10 +198,44 @@ fun GameScreen(
                                     .background(Color.Black.copy(alpha = 0.15f))
                             )
                         }
-                    }
+                    }*/
 
 
                     GamePhase.PLAYING -> {
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+
+                            // 🏳 Liga cím
+                            if(!isLandscape)
+                            {    state.currentLeague?.let { league ->
+                                    Text(
+                                   text = league.name
+                                        .lowercase()
+                                        .replaceFirstChar { it.uppercase() } + " League",
+                                    fontFamily = DeutschGothic,
+                                    fontSize = 28.sp,
+                                    letterSpacing = 2.sp,
+                                    color = Color(0xFFFFD700), // arany
+                                    //color = Color.White,
+                                    modifier = Modifier
+                                        .padding(bottom = 25.dp)
+                                )
+                            } }
+
+                            state.currentPair?.let { pair ->
+                                CastleRow(
+                                    pair = pair,
+                                    selectedIndex = state.selectedIndex,
+                                    enabled = true,
+                                    onSelect = viewModel::onCastleSelected,
+                                    currentLeague = state.currentLeague,
+                                )
+                            }
+                        }
+                    }
+            /*        GamePhase.PLAYING -> {
                         Log.d("GameScreen", "Rendering: PLAYING")  // ← ADD
 
                         state.currentPair?.let { pair ->
@@ -153,10 +243,10 @@ fun GameScreen(
                                 pair = pair,
                                 selectedIndex = state.selectedIndex,
                                 enabled = true,
-                                onSelect = viewModel::onCastleSelected
+                                onSelect = viewModel::onCastleSelected,
                             )
                         }
-                    }
+                    }*/
 
                     GamePhase.LEAGUE_WINNER -> {
                         Log.d("GameScreen", "Rendering: LEAGUE_WINNER")  // ← ADD
@@ -195,17 +285,43 @@ fun GameScreen(
                     GamePhase.SUPERLEAGUE_PLAYING -> {
                         Log.d("GameScreen", "Rendering: SUPERLEAGUE_PLAYING")
 
-                        state.currentPair?.let { pair ->
-                            CastleRow(
-                                pair = pair,
-                                selectedIndex = state.selectedIndex,
-                                enabled = true,
-                                onSelect = viewModel::onCastleSelected
+                        Image(
+                            painter =  painterResource(id = R.drawable.backround_for_castle_games3
+                            ),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+
+                            if(!isLandscape) {     Text(
+                                text = "Champions League",
+                                fontFamily = DeutschGothic,
+                                fontSize = 28.sp,
+                                letterSpacing = 2.sp,
+                                color = Color(0xFFFFD700), // arany
+                                //color = Color.White,
+                                modifier = Modifier
+                                    .padding(bottom = 25.dp)
                             )
-                        } ?: run {
-                            CircularProgressIndicator()
+                        }
+                            state.currentPair?.let { pair ->
+                                CastleRow(
+                                    pair = pair,
+                                    currentLeague = state.currentLeague,
+                                    selectedIndex = state.selectedIndex,
+                                    enabled = true,
+                                    onSelect = viewModel::onCastleSelected
+                                )
+                            } ?: run {
+                                CircularProgressIndicator()
+                            }
                         }
                     }
+
                     GamePhase.SUPERLEAGUE_WINNER -> {
                         Log.d("GameScreen", "Rendering: SUPERLEAGUE_WINNER")
 
@@ -299,8 +415,13 @@ fun LeagueTopBar(
 
 
                 Text(
-                    text = league.name,
-                    fontWeight = FontWeight.Bold,
+                    text = league.name
+                        .lowercase()
+                        .replaceFirstChar { it.uppercase() },
+                    fontWeight = FontWeight.Normal,
+                    fontFamily = DeutschGothic,
+                    letterSpacing = 2.sp,
+                    fontSize = 22.sp,
                     color = if (enabled) Color(0xFF1478F6) else Color.Gray,
                     modifier = Modifier.clickable(
                         enabled = enabled
@@ -313,10 +434,14 @@ fun LeagueTopBar(
     }
 }
 
+
+
+// two cards to choose
 @SuppressLint("Range")
 @Composable
 fun CastleCard(
     castle: CastleItem,
+    currentLeague: League?,
     enabled: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
@@ -335,11 +460,15 @@ fun CastleCard(
             )
             .alpha(if (enabled) 1f else 0.4f)
             .clickable(enabled = enabled, onClick = onClick),
-        elevation = CardDefaults.cardElevation(6.dp)
+        elevation = CardDefaults.cardElevation(6.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF1A1A1A)
+        )
     ) {
         Column {
             AsyncImage(
-                model = castle.imageUrl,
+                //model = castle.imageUrl,
+                model = castle.imageUrl.firstOrNull(),
                 contentDescription = "${castle.title} - ${castle.country}",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -370,13 +499,16 @@ fun CastleCard(
 
 
 
+
 @Composable
 fun CastleRow(
     pair: Pair<CastleItem, CastleItem>,
+    currentLeague: League?,   // ← ADD
     selectedIndex: Int?,
     enabled: Boolean,
     onSelect: (Int) -> Unit
 ) {
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -386,16 +518,19 @@ fun CastleRow(
     ) {
         CastleCard(
             castle = pair.first,
+            currentLeague = currentLeague,
             enabled = enabled,
             modifier = Modifier.weight(1f),
-            onClick = { onSelect(0) }
+            onClick = { onSelect(0) },
+
         )
 
         CastleCard(
             castle = pair.second,
+            currentLeague = currentLeague,
             enabled = enabled,
             modifier = Modifier.weight(1f),
-            onClick = { onSelect(1) }
+            onClick = { onSelect(1) },
         )
     }
 }

@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.castlegame.data.model.CastleItem
 import com.example.castlegame.data.model.League
+import com.example.castlegame.ui.theme.DeutschGothic
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +44,11 @@ fun LeagueRankingScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("${league.name} ranking") }
+                title = { Text("${league.name} ranking"
+                    .lowercase()
+                    .replaceFirstChar { it.uppercase() },
+                    fontFamily = DeutschGothic,
+                    letterSpacing = 2.sp,) }
             )
         }
     ) { padding ->
@@ -59,7 +64,8 @@ fun LeagueRankingScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                itemsIndexed(ranking) { index, (castle, score) ->
+               val displayRanking = ranking.take(8)
+                itemsIndexed(displayRanking) { index, (castle, score) ->
                     RankingRow(
                         position = index + 1,
                         castle = castle,
@@ -108,7 +114,7 @@ fun RankingRow(
         )
 
         AsyncImage(
-            model = castle.imageUrl,
+            model = castle.imageUrl.firstOrNull(),
             contentDescription = castle.title,
             modifier = Modifier
                 .size(56.dp)

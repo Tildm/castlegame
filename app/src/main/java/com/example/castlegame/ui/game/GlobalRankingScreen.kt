@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.castlegame.data.model.CastleItem
 import com.example.castlegame.data.model.GlobalCastle
+import com.example.castlegame.ui.theme.DeutschGothic
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,7 +35,9 @@ fun GlobalRankingScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("🌍 International Ranking") }
+                title = { Text("🌍 International Ranking",
+                    fontFamily = DeutschGothic,
+                    letterSpacing = 2.sp,) }
             )
         }
     ) { padding ->
@@ -50,7 +53,8 @@ fun GlobalRankingScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                itemsIndexed(ranking) { index, castle ->
+                val displayRanking = ranking.take(3)
+                itemsIndexed(displayRanking) { index, castle ->
                     // Convert GlobalCastle → CastleItem to reuse RankingRow
                     RankingRow(
                         position = index + 1,
@@ -94,6 +98,8 @@ fun UserSuperLeagueRankingScreen(
             CenterAlignedTopAppBar(
                 title = { Text(
                     "🏰 Your Super League Ranking",
+                    fontFamily = DeutschGothic,
+                    letterSpacing = 2.sp,
                     color = Color(0xFF1478F6)
                 ) }
             )
@@ -111,7 +117,8 @@ fun UserSuperLeagueRankingScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                itemsIndexed(ranking) { index, (castle, wins) ->
+                val displayRanking = ranking.take(3)
+                itemsIndexed(displayRanking) { index, (castle, wins) ->
                     RankingRow(
                         position = index + 1,
                         castle = castle,

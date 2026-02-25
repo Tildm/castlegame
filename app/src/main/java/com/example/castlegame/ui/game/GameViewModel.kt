@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.castlegame.data.model.CastleItem
 import com.example.castlegame.data.model.GlobalCastle
 import com.example.castlegame.data.model.League
+import com.example.castlegame.data.remote.NetworkModule
 import com.example.castlegame.data.repository.FirestoreRepository
 import com.example.castlegame.data.repository.LeagueRepository
 import com.google.firebase.auth.FirebaseAuth
@@ -360,7 +361,44 @@ class GameViewModel : ViewModel() {
             .sortedByDescending { it.second }
     }
 
+
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
+    private fun startSuperLeague() {
+        Log.d("GameViewModel", "SuperLeague here starts")
+
+        // ✅ Use leagueTopResults which was populated correctly after each league finished
+        // instead of getLeagueRanking() which only reads the current winCounts (last league only)
+        val top2PerLeague = mutableListOf<CastleItem>()
+        League.entries.forEach { league ->
+            val top2 = leagueTopResults[league] ?: emptyList()
+            top2PerLeague.addAll(top2)
+        }
+
+        winCounts.clear()
+
+        shuffledPairs = generateAllPairs(top2PerLeague).shuffled().toMutableList()
+        totalGames = shuffledPairs.size
+        Log.d("GameViewModel", "totalGames = $totalGames")
+
+        // ✅ Get first pair here, don't call nextPair() separately (it ran on stale state)
+        val firstPair = if (shuffledPairs.isNotEmpty()) {
+            shuffledPairs.removeAt(0)
+        } else null
+
+        _uiState.update { state ->
+            state.copy(
+                phase = GamePhase.SUPERLEAGUE_PLAYING,
+                superLeagueCastles = top2PerLeague,
+                currentLeague = null,
+                leagueWinner = null,
+                selectedIndex = null,
+                currentPair = firstPair,
+                remainingGames = totalGames,
+            )
+        }
+    }
+
+    /*@RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     private fun startSuperLeague() {
         Log.d("GameViewModel", "SuperLeague here starts")
 
@@ -398,7 +436,9 @@ class GameViewModel : ViewModel() {
         }
 
 
-    }
+    }*/
+
+
     private fun generateAllPairs(castles: List<CastleItem>): List<Pair<CastleItem, CastleItem>> {
         val pairs = mutableListOf<Pair<CastleItem, CastleItem>>()
 
@@ -490,6 +530,29 @@ class GameViewModel : ViewModel() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun loadGlobalRanking() {
+        viewModelScope.launch {
+            try {
+                val apiCastles = NetworkModule.api.getAllCastles()
+                firestoreRepository.loadGlobalSuperLeagueRanking(
+                    apiCastles = apiCastles,
+                    onSuccess = { list ->
+                        _uiState.update {
+                            it.copy(globalRanking = list)
+                        }
+                    },
+                    onError = {
+                        Log.e("Firestore", "Global ranking load failed", it)
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e("Firestore", "Failed to fetch API castles for global ranking", e)
+            }
+        }
+    }
+
+
+    /*@RequiresApi(Build.VERSION_CODES.O)
+    fun loadGlobalRanking() {
         firestoreRepository.loadGlobalSuperLeagueRanking(
             onSuccess = { list ->
                 _uiState.update {
@@ -501,7 +564,7 @@ class GameViewModel : ViewModel() {
                 Log.e("Firestore", "Global ranking load failed", it)
             }
         )
-    }
+    }*/
 
 
     fun backToMenu() {

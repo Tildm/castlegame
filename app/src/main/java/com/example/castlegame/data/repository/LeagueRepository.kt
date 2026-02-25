@@ -28,7 +28,8 @@ class LeagueRepository {
 
         for (castle in castles) {
             val item = CastleItem(
-                imageUrl = castle.image.firstOrNull()?.url.orEmpty(),
+               // imageUrl = castle.image.firstOrNull()?.url.orEmpty(),
+                imageUrl = castle.image.map { it.url },
                 title = castle.title,
                 id = castle.id,
                 country = castle.country,
@@ -103,4 +104,3 @@ class LeagueRepository {
     }
 
 }
-
