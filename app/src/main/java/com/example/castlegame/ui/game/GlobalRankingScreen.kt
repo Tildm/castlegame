@@ -53,7 +53,7 @@ fun GlobalRankingScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                val displayRanking = ranking.take(3)
+                val displayRanking = ranking.take(20)
                 itemsIndexed(displayRanking) { index, castle ->
                     // Convert GlobalCastle → CastleItem to reuse RankingRow
                     RankingRow(
@@ -117,7 +117,7 @@ fun UserSuperLeagueRankingScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                val displayRanking = ranking.take(3)
+                val displayRanking = ranking.take(10) //hány jelenjen meg
                 itemsIndexed(displayRanking) { index, (castle, wins) ->
                     RankingRow(
                         position = index + 1,

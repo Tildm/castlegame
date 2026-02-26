@@ -51,6 +51,8 @@ class GameViewModel : ViewModel() {
 
     var totalGames: Int = 0
 
+    private val headToHead = mutableMapOf<Pair<String, String>, String>() //egymás elleni meccs eredményének tárolásához
+
 
 
     init {
@@ -123,6 +125,9 @@ class GameViewModel : ViewModel() {
             val winner = if (index == 0) pair.first else pair.second
 
             winCounts[winner.id] = (winCounts[winner.id] ?: 0) + 1
+
+            val key = listOf(pair.first.id, pair.second.id).sorted()
+            headToHead[key[0] to key[1]] = winner.id
 
            // Log.d("GameViewModel", "shuffledPairs in CastleSelected = $shuffledPairs")
 
@@ -350,7 +355,6 @@ class GameViewModel : ViewModel() {
         }.shuffled()
 
 
-
     fun getLeagueRanking(league: League): List<Pair<CastleItem, Int>> {
         val items = uiState.value.leagues[league].orEmpty()
 
@@ -358,8 +362,37 @@ class GameViewModel : ViewModel() {
             .map { castle ->
                 castle to (winCounts[castle.id] ?: 0)
             }
-            .sortedByDescending { it.second }
+            .sortedWith(
+                compareByDescending<Pair<CastleItem, Int>> { it.second }
+                    .thenComparator { a, b ->
+
+                        // csak akkor vizsgáljuk ha azonos a pont
+                        if (a.second == b.second) {
+
+                            val key = listOf(a.first.id, b.first.id).sorted()
+                            val winnerId = headToHead[key[0] to key[1]]
+
+                            when (winnerId) {
+                                a.first.id -> -1  // a előrébb
+                                b.first.id -> 1   // b előrébb
+                                else -> 0
+                            }
+                        } else {
+                            0
+                        }
+                    }
+            )
     }
+
+/*    fun getLeagueRanking(league: League): List<Pair<CastleItem, Int>> {
+        val items = uiState.value.leagues[league].orEmpty()
+
+        return items
+            .map { castle ->
+                castle to (winCounts[castle.id] ?: 0)
+            }
+            .sortedByDescending { it.second }
+    }*/
 
 
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
@@ -591,7 +624,40 @@ class GameViewModel : ViewModel() {
         }
     }
 
+
     private fun buildUserSuperLeagueRanking(): List<Pair<CastleItem, Int>> {
+
+        val superLeagueCastles = _uiState.value.superLeagueCastles
+
+        return winCounts
+            .toList()
+            .sortedWith(
+                compareByDescending<Pair<String, Int>> { it.second }
+                    .thenComparator { a, b ->
+
+                        if (a.second == b.second) {
+
+                            val key = listOf(a.first, b.first).sorted()
+                            val winnerId = headToHead[key[0] to key[1]]
+
+                            when (winnerId) {
+                                a.first -> -1
+                                b.first -> 1
+                                else -> 0
+                            }
+
+                        } else {
+                            0
+                        }
+                    }
+            )
+            .mapNotNull { (castleId, wins) ->
+                superLeagueCastles
+                    .firstOrNull { it.id == castleId }
+                    ?.let { castle -> castle to wins }
+            }
+    }
+/*    private fun buildUserSuperLeagueRanking(): List<Pair<CastleItem, Int>> {
         Log.d("GameViewModel", "buildUserSuperLeagueRanking")
         val superLeagueCastles = _uiState.value.superLeagueCastles
         return winCounts
@@ -602,7 +668,7 @@ class GameViewModel : ViewModel() {
                     castle to wins  // ✅ Return both castle and win count
                 }
             }
-    }
+    }*/
 
 
 

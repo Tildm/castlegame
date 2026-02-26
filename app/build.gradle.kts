@@ -78,6 +78,7 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    implementation(libs.compose.material.icons.extended)
 
 
 
@@ -94,7 +95,7 @@ dependencies {
     implementation(libs.okhttp)
 
     // Firebase BoM (Bill of Materials) - manages versions
-    implementation(platform("com.google.firebase:firebase-bom:34.8.0"))
+    implementation(platform("com.google.firebase:firebase-bom:34.9.0"))
 
     // Firebase dependencies (no version needed when using BoM)
     implementation("com.google.firebase:firebase-auth")
