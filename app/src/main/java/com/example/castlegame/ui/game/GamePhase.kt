@@ -1,3 +1,5 @@
+package com.example.castlegame.ui.game
+
 enum class GamePhase {
     SELECT_LEAGUE,
     PLAYING,
@@ -7,7 +9,10 @@ enum class GamePhase {
     SUPERLEAGUE_WINNER,
     SUPERLEAGUE_RANKING,
    USER_SUPERLEAGUE_RANKING,
-    CASTLE_INFO
+    CASTLE_INFO,
+    COUNTRY_PLAYING,    // 🆕 Country tournament in progress
+    COUNTRY_WINNER,
+    COUNTRY_RANKING
 
 }
 

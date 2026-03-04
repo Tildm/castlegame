@@ -1,11 +1,13 @@
 package com.example.castlegame.ui.game
 
 
-import GamePhase
 import LeagueResult
+import android.app.Application
+import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.castlegame.data.model.CastleItem
@@ -22,7 +24,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 
-class GameViewModel : ViewModel() {
+class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         Log.d("GameViewModel", "CREATED")
@@ -53,7 +55,8 @@ class GameViewModel : ViewModel() {
 
     private val headToHead = mutableMapOf<Pair<String, String>, String>() //egymás elleni meccs eredményének tárolásához
 
-
+    // 🌍 All castles across all leagues, used to build country lists
+    private var allCastles: List<CastleItem> = emptyList()
 
     init {
         loadData()
@@ -65,16 +68,56 @@ class GameViewModel : ViewModel() {
             val startLeague = League.WEST
             val pairs = leagues[startLeague].orEmpty()
 
+            // 🌍 Collect all castles and extract unique country list
+            allCastles = leagues.values.flatten()
+            val countries = allCastles
+                .map { it.country }
+                .filter { it.isNotBlank() }
+                .distinct()
+                .sorted()
+
             _uiState.update {
                 it.copy(
                     leagues = leagues,
-                    currentLeague = startLeague
+                    currentLeague = startLeague,
+                    availableCountries = countries   // 🆕
                 )
             }
+
+            // ✅ Promote last week's country winners into their leagues (runs once per week)
+            promoteCountryWinnersIfNewWeek(countries)
 
             resetGame(pairs)
         }
     }
+
+    private fun promoteCountryWinnersIfNewWeek(countries: List<String>) {
+        val calendar = java.util.Calendar.getInstance()
+        val year  = calendar.get(java.util.Calendar.YEAR)
+        val week  = calendar.get(java.util.Calendar.WEEK_OF_YEAR)
+        val weekKey = "$year-W${week.toString().padStart(2, '0')}"
+
+        val prefs = getApplication<Application>().getSharedPreferences("game_prefs", Context.MODE_PRIVATE)
+        val lastPromotedWeek = prefs.getString("last_promoted_week", "")
+
+        if (lastPromotedWeek == weekKey) {
+            Log.d("GameViewModel", "Already promoted for week $weekKey, skipping")
+            return
+        }
+
+        repository.promoteCountryWinnersToLeagues(
+            weekKey = weekKey,
+            countries = countries,
+            onSuccess = {
+                prefs.edit().putString("last_promoted_week", weekKey).apply()
+                Log.d("GameViewModel", "Country winners promoted for week $weekKey")
+            },
+            onError = {
+                Log.e("GameViewModel", "Promotion failed", it)
+            }
+        )
+    }
+
 
     fun selectLeague(league: League) {
        // Log.d("GameViewModel", "selectLeague: $league")
@@ -103,6 +146,43 @@ class GameViewModel : ViewModel() {
         }
     }
 
+    // 🌍 Start a country tournament — mirrors selectLeague() exactly
+    fun selectCountry(country: String) {
+        winCounts.clear()
+        headToHead.clear()
+
+        Log.d("GameViewModel", "country tournament")
+
+        val castles = allCastles.filter { it.country == country }
+        Log.d("GameViewModel", "country tournament - all castles size= ${allCastles.size}")
+        Log.d("GameViewModel", "country tournament - castles size= ${castles}")
+        if (castles.size < 2) {
+            _uiState.update { it.copy(infoMessage = "Not enough castles for $country tournament.") }
+            return
+        }
+
+        shuffledPairs = generateAllPairs(castles).shuffled().toMutableList()
+
+        totalGames = shuffledPairs.size
+
+        val firstPair = if (shuffledPairs.isNotEmpty()) {
+            shuffledPairs.removeAt(0)
+        } else null
+
+        _uiState.update { state ->
+            state.copy(
+                currentCountry = country,
+                phase = GamePhase.COUNTRY_PLAYING,
+                currentPair = firstPair,
+                remainingGames = totalGames,
+                selectedIndex = null,
+                leagueLocked = true,
+                countryWinner = null
+            )
+        }
+    }
+
+
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     fun onCastleSelected(index: Int) {
        // Log.d("GameViewModel", "onCastleSelected START, index=$index")
@@ -110,7 +190,8 @@ class GameViewModel : ViewModel() {
         val currentPhase = _uiState.value.phase
 
         if (currentPhase != GamePhase.PLAYING &&
-            currentPhase != GamePhase.SUPERLEAGUE_PLAYING
+            currentPhase != GamePhase.SUPERLEAGUE_PLAYING &&
+            currentPhase != GamePhase.COUNTRY_PLAYING   // 🆕
         ) {
          //   Log.d("GameViewModel", "onCastleSelected IGNORED, phase=$currentPhase")
             return
@@ -137,6 +218,7 @@ class GameViewModel : ViewModel() {
                 when (currentPhase) {
                     GamePhase.PLAYING -> finishLeague()
                     GamePhase.SUPERLEAGUE_PLAYING -> finishSuperLeague()
+                    GamePhase.COUNTRY_PLAYING -> finishCountryTournament()  // 🆕
                     else -> {}
                 }
             } else {
@@ -157,7 +239,8 @@ class GameViewModel : ViewModel() {
 
         if (
             phase != GamePhase.PLAYING &&
-            phase != GamePhase.SUPERLEAGUE_PLAYING
+            phase != GamePhase.SUPERLEAGUE_PLAYING &&
+            phase != GamePhase.COUNTRY_PLAYING   // 🆕
         ) {
            // Log.d("GameViewModel", "nextPair SKIPPED, phase=$phase")
             return
@@ -246,7 +329,7 @@ class GameViewModel : ViewModel() {
         )
 
         val uid = userId
-        if (uid != null) {
+ /*       if (uid != null) {
             firestoreRepository.saveLeagueResult(
                 userId = uid,
                 result = result,
@@ -257,13 +340,16 @@ class GameViewModel : ViewModel() {
                     Log.e("Firestore", "Save failed", it)
                 }
             )
-        }
+        }*/
 
         if (uid != null && winner != null) {
             repository.saveLeagueResult(
                 userId = uid,
                 leagueId = league.name,
                 winner = winner,
+                allResults = getLeagueRanking(league),  // ← add this
+                onSuccess = { Log.d("LeagueRepo", "Saved") },
+                onError = { Log.e("LeagueRepo", "Failed", it) }
             )
         }
 
@@ -304,6 +390,110 @@ class GameViewModel : ViewModel() {
        // Log.d("GameViewModel", "Phase AFTER update: ${_uiState.value.phase}")
       //  Log.d("GameViewModel", "leagueWinner AFTER update: ${_uiState.value.leagueWinner}")
     }
+
+    // 🌍 Finish country tournament — shows winner then goes back to SELECT_LEAGUE
+    private fun finishCountryTournament() {
+        val country = _uiState.value.currentCountry ?: return
+        val castles = allCastles.filter { it.country == country }
+
+        val winnerId = winCounts.maxByOrNull { it.value }?.key
+        val winner = castles.firstOrNull { it.id == winnerId }
+
+        Log.d("GameViewModel", "Country winner = $winner")
+
+        // ✅ Save country result — mirrors league saving
+        val uid = userId
+        if (uid != null && winner != null) {
+            repository.saveCountryResult(
+               // userId = uid,
+                country = country,
+              //  winner = winner,
+                allResults = getCountryRanking(),
+                onSuccess = { Log.d("LeagueRepo", "Country $country saved") },
+                onError = { Log.e("LeagueRepo", "Failed to save country $country", it) }
+            )
+        }
+        _uiState.update {
+            it.copy(
+                countryWinner = winner,
+                phase = GamePhase.COUNTRY_WINNER,
+                currentPair = null,
+                leagueLocked = false,
+                selectedIndex = null,
+                remainingGames = 0
+            )
+        }
+    }
+
+    // 🌍 After viewing country winner, go to ranking (mirrors continueFromWinner)
+    fun continueFromCountryWinner() {
+        _uiState.update {
+            it.copy(
+                phase = GamePhase.COUNTRY_RANKING,
+                currentPair = null,
+                selectedIndex = null
+            )
+        }
+    }
+
+/*    // 🌍 After viewing country winner, return to main menu
+    fun continueFromCountryWinner() {
+        winCounts.clear()
+        headToHead.clear()
+
+        _uiState.update {
+            it.copy(
+                phase = GamePhase.SELECT_LEAGUE,
+                currentCountry = null,
+                countryWinner = null,
+                currentPair = null,
+                selectedIndex = null,
+                leagueLocked = false
+            )
+        }
+    }*/
+
+    // 🌍 Build ranking for the country that was just played
+    fun getCountryRanking(): List<Pair<CastleItem, Int>> {
+        val country = _uiState.value.currentCountry ?: return emptyList()
+        val castles = allCastles.filter { it.country == country }
+
+        return castles
+            .map { castle -> castle to (winCounts[castle.id] ?: 0) }
+            .sortedWith(
+                compareByDescending<Pair<CastleItem, Int>> { it.second }
+                    .thenComparator { a, b ->
+                        if (a.second == b.second) {
+                            val key = listOf(a.first.id, b.first.id).sorted()
+                            val winnerId = headToHead[key[0] to key[1]]
+                            when (winnerId) {
+                                a.first.id -> -1
+                                b.first.id -> 1
+                                else -> 0
+                            }
+                        } else 0
+                    }
+            )
+    }
+
+    // 🌍 After viewing country ranking, return to main menu
+    fun continueFromCountryRanking() {
+        winCounts.clear()
+        headToHead.clear()
+
+        _uiState.update {
+            it.copy(
+                phase = GamePhase.SELECT_LEAGUE,
+                currentCountry = null,
+                countryWinner = null,
+                currentPair = null,
+                selectedIndex = null,
+                leagueLocked = false
+            )
+        }
+    }
+
+
 
 
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
@@ -528,7 +718,8 @@ class GameViewModel : ViewModel() {
             )
         }
 
-        firestoreRepository.saveSuperLeagueResults(
+        firestoreRepository.saveSuperLeagueResultsWithHistory(
+            userId = userId,
             results = globalRanking,
             onError = { e ->
                 Log.w(
@@ -563,6 +754,7 @@ class GameViewModel : ViewModel() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun loadGlobalRanking() {
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
                 val apiCastles = NetworkModule.api.getAllCastles()
@@ -570,15 +762,27 @@ class GameViewModel : ViewModel() {
                     apiCastles = apiCastles,
                     onSuccess = { list ->
                         _uiState.update {
-                            it.copy(globalRanking = list)
+                            it.copy(globalRanking = list, isLoading = false)
                         }
                     },
-                    onError = {
-                        Log.e("Firestore", "Global ranking load failed", it)
+                    onError = { e ->
+                        Log.e("Firestore", "Global ranking load failed", e)
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = "Failed to load global ranking from database."
+                            )
+                        }
                     }
                 )
             } catch (e: Exception) {
                 Log.e("Firestore", "Failed to fetch API castles for global ranking", e)
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "Network timeout or error while fetching castles. Please try again."
+                    )
+                }
             }
         }
     }
@@ -706,4 +910,3 @@ class GameViewModel : ViewModel() {
         loadGlobalRanking()
     }
 }
-

@@ -13,6 +13,7 @@ data class CastleItem(
     val style: String = "",
     val description: String = "",
     val visiting: String = "",
-    val location: String = ""
+    val location: String = "",
+    val group: String = ""
 )
 

@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.castlegame.data.model.CastleItem
 import com.example.castlegame.data.model.GlobalCastle
+import com.example.castlegame.ui.ranking.RankingRow
 import com.example.castlegame.ui.theme.DeutschGothic
 
 

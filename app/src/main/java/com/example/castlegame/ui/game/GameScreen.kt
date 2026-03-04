@@ -1,7 +1,7 @@
 package com.example.castlegame.ui.game
 
 import GlobalRankingScreen
-import LeagueRankingScreen
+import com.example.castlegame.ui.ranking.LeagueRankingScreen
 import UserSuperLeagueRankingScreen
 import android.annotation.SuppressLint
 import android.os.Build
@@ -29,6 +29,8 @@ import android.util.Log
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.ui.Modifier
@@ -37,7 +39,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.castlegame.R
 import com.example.castlegame.ui.theme.DeutschGothic
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
@@ -47,6 +48,7 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.rememberCoroutineScope
+import com.example.castlegame.ui.ranking.CountryRankingScreen
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import toCastleItem
@@ -108,9 +110,49 @@ fun GameScreen(
                     },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
+
+    // 🌍 Country section header
+    if (state.availableCountries.isNotEmpty()) {
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        Text(
+            text = "By Country",
+            fontFamily = DeutschGothic,
+            fontSize = 18.sp,
+            letterSpacing = 2.sp,
+            color = Color(0xFFFFD700),
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
+        )
+
+        // Scrollable country list
+        LazyColumn {
+            items(state.availableCountries) { country ->
+                NavigationDrawerItem(
+                    label = {
+                        Text(
+                            text = country,
+                            fontFamily = DeutschGothic,
+                            fontSize = 16.sp,
+                            letterSpacing = 1.sp,
+                            color = if (state.currentCountry == country)
+                                Color(0xFFFFD700)
+                            else
+                                Color.Unspecified
+                        )
+                    },
+                    selected = state.currentCountry == country,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        viewModel.selectCountry(country)
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
             }
         }
-    ) {
+    }
+}
+}
+)
+    {
 
         Scaffold(
             topBar = {
@@ -126,7 +168,8 @@ fun GameScreen(
                     remaining = state.remainingGames,
                     total = viewModel.totalGames,
                     visible = state.phase == GamePhase.PLAYING ||
-                            state.phase == GamePhase.SUPERLEAGUE_PLAYING
+                            state.phase == GamePhase.SUPERLEAGUE_PLAYING ||
+                            state.phase == GamePhase.COUNTRY_PLAYING
                 )
             }
 
@@ -288,6 +331,73 @@ fun GameScreen(
                             }
                         }
 
+                        // 🌍 Country tournament playing — mirrors PLAYING exactly
+                        GamePhase.COUNTRY_PLAYING -> {
+                            Log.d("GameScreen", "Rendering: COUNTRY_PLAYING")
+
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+
+                                if (!isLandscape) {
+                                    state.currentCountry?.let { country ->
+                                        Text(
+                                            text = country,
+                                            fontFamily = DeutschGothic,
+                                            fontSize = 28.sp,
+                                            letterSpacing = 2.sp,
+                                            color = Color(0xFFFFD700),
+                                            modifier = Modifier.padding(bottom = 25.dp)
+                                        )
+                                    }
+                                }
+
+                                state.currentPair?.let { pair ->
+                                    CastleRow(
+                                        pair = pair,
+                                        selectedIndex = state.selectedIndex,
+                                        enabled = true,
+                                        onSelect = viewModel::onCastleSelected,
+                                        currentLeague = null,
+                                    )
+                                }
+                            }
+                        }
+
+
+                        // 🌍 Country tournament winner — reuses WinnerScreen
+                        GamePhase.COUNTRY_WINNER -> {
+                            Log.d("GameScreen", "Rendering: COUNTRY_WINNER")
+
+                            val winner = state.countryWinner
+
+                            if (winner != null) {
+                                WinnerScreen(
+                                    league = null,
+                                    winner = winner,
+                                    onContinue = viewModel::continueFromCountryWinner
+                                )
+                            } else {
+                                CircularProgressIndicator()
+                            }
+                        }
+
+
+                        // 🌍 Country ranking — mirrors LEAGUE_RANKING
+                        GamePhase.COUNTRY_RANKING -> {
+                            Log.d("GameScreen", "Rendering: COUNTRY_RANKING")
+
+                            CountryRankingScreen(
+                                country = state.currentCountry ?: "",
+                                ranking = viewModel.getCountryRanking(),
+                                onContinue = viewModel::continueFromCountryRanking,
+                                onCastleClick = { castle ->
+                                    viewModel.openCastleInfo(castle)
+                                }
+                            )
+                        }
+
+
 
                         GamePhase.LEAGUE_WINNER -> {
                             Log.d("GameScreen", "Rendering: LEAGUE_WINNER")  // ← ADD
@@ -304,7 +414,6 @@ fun GameScreen(
                                     onContinue = viewModel::continueFromWinner
                                 )
                             } else {
-                                // 💣 ide soha nem kéne jutni, de ne crasheljen
                                 CircularProgressIndicator()
                             }
                         }

@@ -1,6 +1,5 @@
 package com.example.castlegame.ui.game
 
-import GamePhase
 import com.example.castlegame.data.model.CastleItem
 import com.example.castlegame.data.model.GlobalCastle
 
@@ -37,12 +36,14 @@ data class GameUiState(
 
     val userSuperLeagueRanking: List<Pair<CastleItem, Int>> = emptyList(),  // Update type
 
+    val isLoading: Boolean = false,
     val errorMessage: String? = null,
 
     val infoMessage: String? = null,
 
-    val castleForInfo: CastleItem? = null
+    val castleForInfo: CastleItem? = null,
 
+    val availableCountries: List<String> = emptyList(),   // populated after data loads
+    val currentCountry: String? = null,                   // the country being played
+    val countryWinner: CastleItem? = null                 // winner of the country tournament
 )
-
-

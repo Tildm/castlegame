@@ -12,8 +12,9 @@ object NetworkModule {
     private const val BASE_URL = "https://gameofthecastles.onrender.com/"
 
     private val okHttpClient = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(5, TimeUnit.SECONDS)
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
     private val moshi = Moshi.Builder()
@@ -30,4 +31,3 @@ object NetworkModule {
 
     val api: CastlesApi = retrofit.create(CastlesApi::class.java)
 }
-
