@@ -1,11 +1,9 @@
 package com.example.castlegame.data.repository
 
-import LeagueResult
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import com.example.castlegame.data.model.ApiCastle
-import com.example.castlegame.data.model.CastleItem
 import com.example.castlegame.data.model.GlobalCastle
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore

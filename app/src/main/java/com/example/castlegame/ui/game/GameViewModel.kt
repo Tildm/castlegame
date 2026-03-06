@@ -69,7 +69,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             val pairs = leagues[startLeague].orEmpty()
 
             // 🌍 Collect all castles and extract unique country list
-            allCastles = leagues.values.flatten()
+            //allCastles = leagues.values.flatten()
+            allCastles = repository.loadAllCastles()
             val countries = allCastles
                 .map { it.country }
                 .filter { it.isNotBlank() }
