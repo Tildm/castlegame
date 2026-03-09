@@ -1,5 +1,6 @@
 package com.example.castlegame.ui.navigation
 
+import android.annotation.SuppressLint
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.*
@@ -9,7 +10,9 @@ import com.example.castlegame.ui.auth.RegisterScreen
 import com.example.castlegame.ui.game.GameScreen
 import com.example.castlegame.ui.game.GameViewModel
 import com.example.castlegame.ui.auth.AuthViewModel
+import com.example.castlegame.ui.auth.ProfileScreen
 
+@SuppressLint("ComposableDestinationInComposeScope")
 @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
 @Composable
 fun AppNavigation(
@@ -25,8 +28,12 @@ fun AppNavigation(
                 popUpTo(0)
             }
         } else {
-            navController.navigate("game") {
-                popUpTo(0)
+            if (navController.currentDestination?.route != "game" &&
+                navController.currentDestination?.route != "profile"
+            ) {
+                navController.navigate("game") {
+                    popUpTo(0)
+                }
             }
         }
     }
@@ -58,8 +65,12 @@ fun AppNavigation(
         // val gameViewModel: GameViewModel = viewModel()
             GameScreen(
                 viewModel = gameViewModel,
-                onLogout = authViewModel::logout
+                onLogout = authViewModel::logout,
+                onProfileClick = { navController.navigate("profile") }
             )
+    }
+        composable("profile") {
+            ProfileScreen(onBack = { navController.popBackStack() })
         }
     }
 }
