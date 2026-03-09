@@ -1,12 +1,26 @@
 package com.example.castlegame.ui.auth
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import androidx.compose.ui.res.stringResource
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.common.api.ApiException
+import com.example.castlegame.R
+import androidx.compose.ui.viewinterop.AndroidView
+import com.facebook.CallbackManager
+import com.facebook.FacebookCallback
+import com.facebook.FacebookException
+import com.facebook.login.LoginResult
+import com.facebook.login.widget.LoginButton
 
 @Composable
 fun LoginScreen(
@@ -15,6 +29,9 @@ fun LoginScreen(
     viewModel: AuthViewModel = viewModel()
 ) {
     val authState by viewModel.authState.collectAsState()
+
+    val callbackManager = remember { CallbackManager.Factory.create() }
+
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -31,6 +48,37 @@ fun LoginScreen(
         if (authState is AuthResultState.Success) {
             onSuccess()
             viewModel.resetAuthState()
+        }
+    }
+
+    val context = LocalContext.current
+    val clientId = stringResource(R.string.default_web_client_id)
+
+    val googleSignInClient = remember(context, clientId) {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(clientId)
+            .requestEmail()
+            .build()
+
+        GoogleSignIn.getClient(context, gso)
+    }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+
+        try {
+            val account = task.getResult(ApiException::class.java)
+            val idToken = account.idToken
+
+            if (idToken != null) {
+                viewModel.loginWithGoogle(idToken)
+            }
+
+        } catch (e: ApiException) {
+            e.printStackTrace()
         }
     }
 
@@ -91,6 +139,46 @@ fun LoginScreen(
             Text("No account? Register")
         }
 
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = {
+                launcher.launch(googleSignInClient.signInIntent)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Continue with Google")
+        }
+
+
+        Spacer(Modifier.height(12.dp))
+
+        AndroidView(
+            modifier = Modifier.fillMaxWidth(),
+            factory = { context ->
+                LoginButton(context).apply {
+                    // Így a helyes: közvetlenül a listát adjuk át
+                    setReadPermissions(listOf("email", "public_profile"))
+
+                    registerCallback(callbackManager,
+                        object : FacebookCallback<LoginResult> {
+                            override fun onSuccess(result: LoginResult) {
+                                val token = result.accessToken.token
+                                viewModel.loginWithFacebook(token)
+                            }
+
+                            override fun onCancel() {
+                                // Opcionális: Logolhatod, ha a felhasználó meggondolta magát
+                            }
+
+                            override fun onError(error: FacebookException) {
+                                error.printStackTrace()
+                            }
+                        }
+                    )
+                }
+            }
+        )
+
         // Error message display
         if (authState is AuthResultState.Error) {
             Spacer(Modifier.height(8.dp))
@@ -103,3 +191,4 @@ fun LoginScreen(
         }
     }
 }
+

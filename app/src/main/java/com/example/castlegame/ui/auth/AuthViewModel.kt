@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import android.util.Log
 
 class AuthViewModel(
     private val repository: AuthRepository = AuthRepository()
@@ -117,6 +118,41 @@ class AuthViewModel(
             )
         }
     }
+
+    fun loginWithGoogle(idToken: String) {
+
+        Log.d("AUTH", "Google token received")
+
+        _authState.value = AuthResultState.Loading
+
+        viewModelScope.launch {
+
+            val result = repository.signInWithGoogle(idToken)
+
+            Log.d("AUTH", "Firebase login result: $result")
+
+            _authState.value = result.fold(
+                onSuccess = { AuthResultState.Success },
+                onFailure = { AuthResultState.Error(it.message ?: "Google login failed") }
+            )
+        }
+    }
+
+    fun loginWithFacebook(token: String) {
+
+        _authState.value = AuthResultState.Loading
+
+        viewModelScope.launch {
+
+            val result = repository.signInWithFacebook(token)
+
+            _authState.value = result.fold(
+                onSuccess = { AuthResultState.Success },
+                onFailure = { AuthResultState.Error(it.message ?: "Facebook login failed") }
+            )
+        }
+    }
+
 
     /**
      * Logs out the current user

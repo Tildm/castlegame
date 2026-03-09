@@ -80,6 +80,10 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation(libs.compose.material.icons.extended)
 
+    implementation("com.facebook.android:facebook-login:18.1.3")
+
+    implementation("com.google.android.gms:play-services-auth:21.5.1")
+
 
 
     implementation("io.coil-kt:coil-compose:2.7.0")

@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">castlegame</string>
+    <string name="facebook_app_id">554218731839062</string>
+    <string name="fb_login_protocol_scheme">fb554218731839062</string>
+    <string name="facebook_client_token">7c6cec4676d68f648d8635886205077d</string>
+
+    <string name ="default_web_client_id">
+        200782842036-v659frr2g2uc31lkg4t0l7aae29f738i.apps.googleusercontent.com
+</string>
 </resources>
