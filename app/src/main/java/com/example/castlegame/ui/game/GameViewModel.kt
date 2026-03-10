@@ -8,13 +8,12 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.castlegame.data.model.CastleItem
 import com.example.castlegame.data.model.GlobalCastle
 import com.example.castlegame.data.model.League
 import com.example.castlegame.data.remote.NetworkModule
-import com.example.castlegame.data.repository.FirestoreRepository
+import com.example.castlegame.data.repository.GlobalRepository
 import com.example.castlegame.data.repository.LeagueRepository
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
@@ -30,7 +29,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         Log.d("GameViewModel", "CREATED")
     }
 
-    private val firestoreRepository: FirestoreRepository = FirestoreRepository()
+    private val globalRepository: GlobalRepository = GlobalRepository()
 
     private val userId: String?
         get() = FirebaseAuth.getInstance().currentUser?.uid
@@ -719,7 +718,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
 
-        firestoreRepository.saveSuperLeagueResultsWithHistory(
+        globalRepository.saveSuperLeagueResultsWithHistory(
             userId = userId,
             results = globalRanking,
             onError = { e ->
@@ -759,7 +758,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             try {
                 val apiCastles = NetworkModule.api.getAllCastles()
-                firestoreRepository.loadGlobalSuperLeagueRanking(
+                globalRepository.loadGlobalSuperLeagueRanking(
                     apiCastles = apiCastles,
                     onSuccess = { list ->
                         _uiState.update {

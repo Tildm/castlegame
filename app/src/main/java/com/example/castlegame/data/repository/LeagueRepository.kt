@@ -10,6 +10,8 @@ import android.util.Log
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
 
+
+//league and country repository
 class LeagueRepository {
     private val api = NetworkModule.api
     private val db = FirebaseFirestore.getInstance()
@@ -194,46 +196,6 @@ class LeagueRepository {
     }
 
 
-    /*suspend fun loadLeagues(): Map<League, List<CastleItem>> {
-        val castles = try {
-            api.getAllCastles()
-        } catch (e: Exception) {
-            emptyList()
-        }
-
-        val result = mutableMapOf(
-            League.EAST to mutableListOf<CastleItem>(),
-            League.WEST to mutableListOf<CastleItem>(),
-            League.NORTH to mutableListOf<CastleItem>(),
-            League.SOUTH to mutableListOf<CastleItem>()
-        )
-
-        for (castle in castles) {
-            val item = CastleItem(
-                imageUrl = castle.image.map { it.url },
-                title = castle.title,
-                id = castle.id,
-                country = castle.country,
-                description = castle.description,
-                wikiUrl = castle.wikiUrl,
-                text = castle.text,
-                built = castle.built,
-                style = castle.style,
-                visiting = castle.visiting,
-                location = castle.location,
-                group       = castle.group
-            )
-            //innen tölti be a nemzeti bajnokságokhoz a csapatokat, és a égtájak szerinti csapatokat is
-            when (castle.group) {
-                "East League" -> result[League.EAST]?.let { if (it.size < 6) it.add(item) }
-                "West League" -> result[League.WEST]?.let { if (it.size < 6) it.add(item) }
-                "North League" -> result[League.NORTH]?.let { if (it.size < 6) it.add(item) }
-                "South League" -> result[League.SOUTH]?.let { if (it.size < 6) it.add(item) }
-            }
-        }
-
-        return result
-    }*/
 
     /**
      * Saves the full league ranking result:
@@ -258,22 +220,6 @@ class LeagueRepository {
 
         val batch = db.batch()
 
-    /*    // 1. Per-user winner record - merging to avoid overwriting full LeagueResult if it exists
-        val userLeagueRef = db
-            .collection("users")
-            .document(userId)
-            .collection("leagues")
-            .document(leagueId)
-
-        batch.set(
-            userLeagueRef,
-            mapOf(
-                "winnerId" to winner.id,
-               // "winnerTitle" to winner.title,
-                "lastPlayedTimestamp" to System.currentTimeMillis()
-            ),
-            SetOptions.merge()
-        )*/
 
         // 2. Cumulative wins
         allResults.forEach { (castle, wins) ->

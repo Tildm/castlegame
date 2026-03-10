@@ -10,63 +10,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 
-class FirestoreRepository(
+class GlobalRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
-
-/*    fun saveLeagueResult(
-        userId: String,
-        result: LeagueResult,
-        onSuccess: () -> Unit = {},
-        onError: (Exception) -> Unit = {}
-    ) {
-        db.collection("users")
-            .document(userId)
-            .collection("leagues")
-            .document(result.league.name)
-            .set(result)
-            .addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { onError(it) }
-    }*/
-
-    /*fun saveInternationalResult(
-        userId: String,
-        winner: CastleItem
-    ) {
-        val userRef = db
-            .collection("users")
-            .document(userId)
-            .collection("international_result")
-            .document("latest")
-
-        val globalRef = db
-            .collection("global_superleague")
-            .document("castles")
-            .collection("items")
-            .document(winner.id)
-
-        db.runBatch { batch ->
-            // 👤 user result
-            batch.set(
-                userRef,
-                mapOf(
-                    "winnerId" to winner.id,
-                    "winnerTitle" to winner.title,
-                    "imageUrl" to winner.imageUrl,
-                    "timestamp" to System.currentTimeMillis()
-                )
-            )
-
-            // 🌍 global aggregation — only increment wins, details come from API
-            batch.set(
-                globalRef,
-                mapOf(
-                    "wins" to FieldValue.increment(1)
-                ),
-                SetOptions.merge()
-            )
-        }
-    }*/
 
     /**
      * Loads the global ranking from Firestore (wins only), then enriches

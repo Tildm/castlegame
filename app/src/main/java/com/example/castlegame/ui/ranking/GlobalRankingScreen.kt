@@ -1,3 +1,5 @@
+package com.example.castlegame.ui.ranking
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
@@ -22,8 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.castlegame.data.model.CastleItem
 import com.example.castlegame.data.model.GlobalCastle
-import com.example.castlegame.ui.ranking.RankingRow
 import com.example.castlegame.ui.theme.DeutschGothic
+import toCastleItem
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,7 +74,7 @@ fun GlobalRankingScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF6A5ACD)  // Purple color from screenshot
                 )
             ) {
@@ -147,7 +150,7 @@ fun UserSuperLeagueRankingScreen(
                     topEnd = 0.dp,
                     bottomEnd = 0.dp
                 ),
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF6A5ACD)  // Purple color
                     )
                 ) {
@@ -170,7 +173,7 @@ fun UserSuperLeagueRankingScreen(
                         topEnd = 24.dp,
                         bottomEnd = 24.dp
                     ),
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF6A5ACD)  // Purple color
                     )
                 ) {
