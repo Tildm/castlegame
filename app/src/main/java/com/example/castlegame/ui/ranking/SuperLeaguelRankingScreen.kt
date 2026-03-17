@@ -31,7 +31,7 @@ import toCastleItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GlobalRankingScreen(
+fun SuperLeagueRankingScreen(
     ranking: List<GlobalCastle>,
     onCastleClick: (GlobalCastle) -> Unit,
     onContinue: () -> Unit,
@@ -39,7 +39,7 @@ fun GlobalRankingScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("🌍 International Ranking",
+                title = { Text("🌍 Super League Ranking",
                     fontFamily = DeutschGothic,
                     letterSpacing = 2.sp,) }
             )

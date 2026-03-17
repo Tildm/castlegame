@@ -5,6 +5,10 @@ enum class GamePhase {
     PLAYING,
     LEAGUE_WINNER,
     LEAGUE_RANKING,
+    // 🆕 Personal league flow
+    USER_LEAGUE_PLAYING,
+    USER_LEAGUE_WINNER,
+    USER_LEAGUE_RANKING,
     SUPERLEAGUE_PLAYING,   // 🆕 8 vár egymás ellen
     SUPERLEAGUE_WINNER,
     SUPERLEAGUE_RANKING,
@@ -12,7 +16,13 @@ enum class GamePhase {
     CASTLE_INFO,
     COUNTRY_PLAYING,    // 🆕 Country tournament in progress
     COUNTRY_WINNER,
-    COUNTRY_RANKING
+    COUNTRY_RANKING,
+    USER_COUNTRY_RANKING,
+
+    //User Personal league flow
+    USER_PERSONAL_SUPERLEAGUE_PLAYING,
+    USER_PERSONAL_SUPERLEAGUE_WINNER,
+    USER_PERSONAL_SUPERLEAGUE_RANKING,
 
 }
 

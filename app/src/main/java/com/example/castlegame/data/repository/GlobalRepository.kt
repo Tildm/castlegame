@@ -15,6 +15,72 @@ class GlobalRepository(
 ) {
 
     /**
+     * Loads the aggregated country ranking from the Firestore `country_ranking`
+     * collection for a specific country, then enriches each entry with castle
+     * details from the already-fetched [apiCastles] list — the same pattern
+     * used by loadGlobalSuperLeagueRanking().
+     *
+     * Firestore document structure (docId = "${country}_${castleId}"):
+     *   wins        : Long   (cumulative, incremented via FieldValue.increment)
+     *   country     : String
+     *   castleId    : String
+     *   castleTitle : String
+     *   updatedAt   : Timestamp
+     */
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun loadGlobalCountryRanking(
+        country: String,
+        apiCastles: List<ApiCastle>,
+        limit: Int = 50,
+        onSuccess: (List<GlobalCastle>) -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+
+        val apiMap = apiCastles.associateBy { it.id }
+
+        db.collection("country_ranking")
+            .whereEqualTo("country", country)
+            .orderBy("wins", Query.Direction.DESCENDING)
+            .limit(limit.toLong())
+            .get()
+            .addOnSuccessListener { snapshot ->
+                Log.d("GlobalRepository", "Loaded ${snapshot.size()} docs for country=$country")
+
+                val list = snapshot.documents.mapNotNull { doc ->
+                    try {
+                        val castleId = doc.getString("castleId") ?: doc.id
+                        val wins     = (doc.getLong("wins") ?: 0L).toInt()
+                        val api      = apiMap[castleId]
+
+                        GlobalCastle(
+                            id          = castleId,
+                            title       = api?.title       ?: doc.getString("castleTitle") ?: "",
+                            imageUrl    = api?.image?.map { it.url } ?: emptyList(),
+                            wins        = wins,
+                            description = api?.description ?: "",
+                            wikiUrl     = api?.wikiUrl     ?: "",
+                            country     = api?.country     ?: country,
+                            built       = api?.built       ?: "",
+                            style       = api?.style       ?: "",
+                            visiting    = api?.visiting    ?: "",
+                            location    = api?.location    ?: ""
+                        )
+                    } catch (e: Exception) {
+                        Log.e("GlobalRepository", "Error parsing country ranking doc: ${doc.id}", e)
+                        null
+                    }
+                }
+
+                onSuccess(list)
+            }
+            .addOnFailureListener { e ->
+                Log.e("GlobalRepository", "Error loading country ranking for $country", e)
+                onError(e)
+            }
+    }
+
+
+    /**
      * Loads the global ranking from Firestore (wins only), then enriches
      * each entry with castle details from the already-fetched [apiCastles] list.
      * This way Firestore only stores what it owns: the win counts.
@@ -134,40 +200,13 @@ class GlobalRepository(
             )
         }
 
-        //lekerdezes:
+/**lekerdezes:
         /*db.collection("global_superleague_weekly_ranking")
     .document("2026-W09")
     .collection("castles")
     .orderBy("wins", Query.Direction.DESCENDING)*/
+*/
 
-
-
-        // Set a placeholder on the week document so the subcollection path is valid
-       /* val weekRef = db
-            .collection("global_superleague_history")
-            .document(weekKey)
-
-        batch.set(
-            weekRef,
-            mapOf("week" to weekKey),
-            SetOptions.merge()
-        )
-
-        // 2. Save this session as a history snapshot under the current week
-        val sessionRef = db
-            .collection("global_superleague_history")
-            .document(weekKey)
-            .collection("sessions")
-            .document()  // auto-generated id
-
-        batch.set(
-            sessionRef,
-            mapOf(
-                "userId" to userId,
-                "playedAt" to FieldValue.serverTimestamp(),
-                "results" to results.map { mapOf("id" to it.id, "wins" to it.wins) }
-            )
-        )*/
 
         batch.commit()
             .addOnSuccessListener {
@@ -184,46 +223,4 @@ class GlobalRepository(
             }
     }
 
-    /*fun saveSuperLeagueResults(
-        results: List<GlobalCastle>,
-        onSuccess: () -> Unit = {},
-        onError: (Exception) -> Unit = {}
-    ) {
-        Log.d("FirestoreRepository", "Saving ${results.size} castle results to Firestore...")
-
-        val batch = db.batch()
-
-        results.forEach { castle ->
-            val ref = db
-                .collection("global_superleague_ranking")
-                .document(castle.id)
-
-            Log.d("FirestoreRepository", "Saving ${castle.title}: ${castle.wins} wins")
-
-            // Only store the win count — all other castle data comes from the API
-            batch.set(
-                ref,
-                mapOf(
-                    "wins" to FieldValue.increment(castle.wins.toLong())
-                ),
-                SetOptions.merge()
-            )
-        }
-
-        batch.commit()
-            .addOnSuccessListener {
-                Log.d("FirestoreRepository", "SuperLeague results saved successfully")
-                onSuccess()
-            }
-            .addOnFailureListener { e ->
-                if (e.message?.contains("UNAVAILABLE") == true ||
-                    e.message?.contains("offline") == true) {
-                    Log.w("FirestoreRepository", "Saved locally, will sync when online", e)
-                    onSuccess()
-                } else {
-                    Log.e("FirestoreRepository", "Error saving results", e)
-                    onError(e)
-                }
-            }
-    }*/
 }

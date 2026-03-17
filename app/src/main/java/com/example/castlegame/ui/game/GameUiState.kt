@@ -45,5 +45,24 @@ data class GameUiState(
 
     val availableCountries: List<String> = emptyList(),   // populated after data loads
     val currentCountry: String? = null,                   // the country being played
-    val countryWinner: CastleItem? = null                 // winner of the country tournament
+    val countryWinner: CastleItem? = null,                 // winner of the country tournament
+
+
+    val playedCountries: Set<String> = emptySet(),
+    val userCountryRanking: List<Pair<CastleItem, Int>> = emptyList(),
+    val globalCountryRanking: List<GlobalCastle> = emptyList(),
+    val isCountryRankingLoading: Boolean = false,
+
+    // 🆕 Personal league flow
+    val allCountriesPlayed: Boolean = false,
+    val userLeagueCastles: Map<League, List<CastleItem>> = emptyMap(),
+    val userLeagueWinner: CastleItem? = null,
+    val userLeagueCompletedLeagues: Set<League> = emptySet(),   // tracks which user leagues are done
+
+    val userLeagueTopResults: Map<League, CastleItem> = emptyMap(),     // winner per league → feeds personal superleague
+    val userPersonalSuperLeagueCastles: List<CastleItem> = emptyList(),
+    val userPersonalSuperLeagueWinner: CastleItem? = null,
+    val userPersonalSuperLeagueRanking: List<Pair<CastleItem, Int>> = emptyList(),
+
+
 )

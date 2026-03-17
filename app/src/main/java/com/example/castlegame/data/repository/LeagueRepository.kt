@@ -7,14 +7,20 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import android.util.Log
+import com.google.firebase.Timestamp
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
 
+import com.google.firebase.auth.FirebaseAuth
+
+private const val TAG = "UserCountryRankings"
 
 //league and country repository
 class LeagueRepository {
     private val api = NetworkModule.api
     private val db = FirebaseFirestore.getInstance()
+
+
 
     suspend fun loadAllCastles(): List<CastleItem> {
         return try {
@@ -203,6 +209,114 @@ class LeagueRepository {
      * 2. Per-user winner record in users/{userId}/leagues/{leagueId}
      * 3. Timestamped session snapshot in global_leagues_history/{weekKey}/sessions/{auto-id}
      */
+
+    fun saveUserLeagueRanking(
+        userId: String,
+        winner: CastleItem,
+        leagueId: String,
+        allResults: List<Pair<CastleItem, Int>>,
+        onSuccess: () -> Unit = {},
+        onError: (Exception) -> Unit = {}
+    ) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        if (uid == null) {
+            Log.w(TAG, "saveUserLeagueRanking: no authenticated user, skipping")
+            onSuccess()
+            return
+        }
+
+        val calendar = Calendar.getInstance()
+        val year = calendar.get(Calendar.YEAR)
+        val week = calendar.get(Calendar.WEEK_OF_YEAR)
+        val weekKey = "$year-W${week.toString().padStart(2, '0')}"
+
+        val db = FirebaseFirestore.getInstance()
+        val batch = db.batch()
+
+        // 1. User-scoped ranking (existing behaviour)
+        val castleList = allResults.map { (castle, wins) ->
+            mapOf(
+                "castleId"    to castle.id,
+                "castleTitle" to castle.title,
+                "updatedAt"   to Timestamp.now(),
+                "imageUrl"    to (castle.imageUrl.firstOrNull() ?: ""),
+                "country"     to castle.country,
+                "group"       to castle.group,
+                "wins"        to wins
+            )
+        }
+
+        val userDoc = mapOf(
+            "leagueId" to leagueId,
+            "savedAt"  to Timestamp.now(),
+            "castles"  to castleList
+        )
+
+        val userRef = db.collection("users")
+            .document(uid)
+            .collection("rankings")
+            .document(leagueId)
+
+        batch.set(userRef, userDoc, SetOptions.merge())
+
+        // 2. Global cumulative ranking
+        allResults.forEach { (castle, wins) ->
+            if (wins > 0) {
+                val globalRef = db
+                    .collection("global_leagues_ranking")
+                    .document("${leagueId}_${castle.id}")
+
+                batch.set(
+                    globalRef,
+                    mapOf(
+                        "wins"         to FieldValue.increment(wins.toLong()),
+                        "leagueId"     to leagueId,
+                        "castleId"     to castle.id,
+                        "castleTitle"  to castle.title,
+                        "updatedAt"    to FieldValue.serverTimestamp()
+                    ),
+                    SetOptions.merge()
+                )
+            }
+        }
+
+        // 3. Global weekly ranking
+        allResults.forEach { (castle, wins) ->
+            val weekRef = db
+                .collection("global_leagues_weekly_ranking")
+                .document(weekKey)
+                .collection(leagueId)
+                .document("${leagueId}_${castle.id}")
+
+            batch.set(
+                weekRef,
+                mapOf(
+                    "wins"        to FieldValue.increment(wins.toLong()),
+                    "updatedAt"   to FieldValue.serverTimestamp(),
+                    "castleId"    to castle.id,
+                    "castleTitle" to castle.title,
+                    "week"        to weekKey
+                ),
+                SetOptions.merge()
+            )
+        }
+
+        batch.commit()
+            .addOnSuccessListener {
+                Log.d(TAG, "User league ranking saved for $leagueId")
+                onSuccess()
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Failed to save user league ranking for $leagueId: ${e.message}", e)
+                if (e.message?.contains("UNAVAILABLE") == true ||
+                    e.message?.contains("offline") == true) {
+                    onSuccess() // cached locally, will sync
+                } else {
+                    onError(e)
+                }
+            }
+    }
+
     fun saveLeagueResult(
         userId: String,
         leagueId: String,
@@ -361,6 +475,184 @@ fun saveCountryResult(
             }
         }
 }
+
+    /**
+     * Loads the user's saved #1 winner for every country, then groups them
+     * by their castle's `group` field into the 4 leagues.
+     *
+     * Returns Map<League, List<CastleItem>> — same shape as loadLeagues() —
+     * but containing only castles the user personally voted to the top.
+     *
+     * Reuses loadUserCountryRanking() — no new Firestore reads needed.
+     */
+    suspend fun loadUserLeagueCastles(
+        availableCountries: List<String>,
+        allCastles: List<CastleItem>
+    ): Map<League, List<CastleItem>> {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+            ?: return emptyMap()
+
+        // Quick lookup: id → full CastleItem with all fields populated from API
+        val castleById = allCastles.associateBy { it.id }
+
+        val result = mutableMapOf(
+            League.EAST  to mutableListOf<CastleItem>(),
+            League.WEST  to mutableListOf<CastleItem>(),
+            League.NORTH to mutableListOf<CastleItem>(),
+            League.SOUTH to mutableListOf<CastleItem>()
+        )
+
+        for (country in availableCountries) {
+            val ranking = loadUserCountryRanking(country) ?: continue
+            val storedWinner = ranking.firstOrNull()?.first ?: continue
+            // Enrich with full API data — falls back to stored data if not found
+            val winner = castleById[storedWinner.id] ?: storedWinner
+
+            val targetLeague = when (winner.group) {
+                "East League"  -> League.EAST
+                "West League"  -> League.WEST
+                "North League" -> League.NORTH
+                "South League" -> League.SOUTH
+                else -> {
+                    Log.w("LeagueRepository", "Unknown group '${winner.group}' for $country winner, skipping")
+                    continue
+                }
+            }
+
+            result[targetLeague]?.add(winner)
+            Log.d("LeagueRepository", "User league: ${winner.title} ($country) → $targetLeague")
+        }
+
+        return result
+    }
+
+// ── Save user country ranking ─────────────────────────────────────────────────────────────────────
+
+    fun saveUserCountryRanking(
+        country: String,
+        allResults: List<Pair<CastleItem, Int>>,
+        onSuccess: () -> Unit = {},
+        onError: (Exception) -> Unit = {}
+    ) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        if (uid == null) {
+            Log.w(TAG, "saveUserCountryRanking: no authenticated user, skipping")
+            onSuccess()   // non-fatal — global ranking was already saved
+            return
+        }
+
+        val db = FirebaseFirestore.getInstance()
+
+        val castleList = allResults.map { (castle, wins) ->
+            mapOf(
+                "castleId"    to castle.id,
+                "castleTitle" to castle.title,
+                "updatedAt"   to com.google.firebase.Timestamp.now(),
+                "imageUrl"    to (castle.imageUrl.firstOrNull() ?: ""),
+                "country"     to castle.country,
+                "group"       to castle.group,
+                "wins"        to wins
+            )
+        }
+
+        val doc = mapOf(
+            "country" to country,
+            "savedAt" to com.google.firebase.Timestamp.now(),
+            "castles" to castleList
+        )
+
+        db.collection("users")
+            .document(uid)
+            .collection("rankings")
+            .document(country)          // one doc per country — always overwrites with latest
+            .set(doc, SetOptions.merge())
+            .addOnSuccessListener {
+                Log.d(TAG, "User ranking saved for $country")
+                onSuccess()
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Failed to save user ranking for $country: ${e.message}", e)
+                onError(e)
+            }
+    }
+
+
+    // ── Load single country ───────────────────────────────────────────────────────
+
+    /**
+     * Returns the user's saved ranking for [country], or null if they haven't
+     * played that country yet.
+     *
+     * The returned list is sorted by wins descending (position 1 = most wins).
+     * CastleItems are reconstructed from the stored fields; imageUrl list
+     * contains a single URL (the first one that was saved).
+     */
+    suspend fun loadUserCountryRanking(
+        country: String
+    ): List<Pair<CastleItem, Int>>? {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return null
+        val db  = FirebaseFirestore.getInstance()
+
+        return try {
+            val snap = db.collection("users")
+                .document(uid)
+                .collection("rankings")
+                .document(country)
+                .get()
+                .await()
+
+            if (!snap.exists()) return null
+
+            @Suppress("UNCHECKED_CAST")
+            val castles = snap.get("castles") as? List<Map<String, Any>> ?: return null
+
+            castles
+                .map { entry ->
+                    val castle = CastleItem(
+                        id       = entry["castleId"]    as? String ?: "",
+                        title    = entry["castleTitle"] as? String ?: "",
+                        country  = entry["country"]     as? String ?: "",
+                        group    = entry["group"]       as? String ?: "",
+                        imageUrl = listOfNotNull(entry["imageUrl"] as? String),
+                        text     = ""
+                    )
+                    val wins = (entry["wins"] as? Long)?.toInt() ?: 0
+                    castle to wins
+                }
+                .sortedByDescending { it.second }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load user ranking for $country: ${e.message}", e)
+            null
+        }
+    }
+
+    // ── Load all played countries ─────────────────────────────────────────────────
+
+    /**
+     * Returns the set of country names the current user has already played.
+     * Used by the drawer to visually distinguish played vs unplayed countries
+     * and to decide whether to show the ranking or start a new game.
+     */
+    suspend fun loadPlayedCountries(): Set<String> {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return emptySet()
+        val db  = FirebaseFirestore.getInstance()
+
+        return try {
+            val snaps = db.collection("users")
+                .document(uid)
+                .collection("rankings")
+                .get()
+                .await()
+
+            snaps.documents.mapNotNull { it.id }.toSet()
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load played countries: ${e.message}", e)
+            emptySet()
+        }
+    }
+
 
     /**
      * Reads country_weekly_ranking for [weekKey], finds the #1 castle per country,

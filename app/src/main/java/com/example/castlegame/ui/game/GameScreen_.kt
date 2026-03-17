@@ -1,13 +1,12 @@
+/*
 package com.example.castlegame.ui.game
 
 import GlobalRankingScreen
 import com.example.castlegame.ui.ranking.LeagueRankingScreen
 import UserSuperLeagueRankingScreen
-import android.annotation.SuppressLint
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,13 +14,8 @@ import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import com.example.castlegame.data.model.CastleItem
-import com.example.castlegame.data.model.League
 
 import androidx.compose.ui.platform.LocalConfiguration
 import android.content.res.Configuration
@@ -31,10 +25,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.castlegame.R
@@ -276,7 +267,8 @@ fun GameScreen(
                                 )
                             }
                         }
-                        /*       GamePhase.SELECT_LEAGUE -> {                                //without animation
+                        */
+/*       GamePhase.SELECT_LEAGUE -> {                                //without animation
                                                     Log.d("GameScreen", "Rendering: SELECT_LEAGUE")
 
                                                     Box(modifier = Modifier.fillMaxSize()) {
@@ -296,7 +288,8 @@ fun GameScreen(
                                                                 .background(Color.Black.copy(alpha = 0.15f))
                                                         )
                                                     }
-                                                }*/
+                                                }*//*
+
                         GamePhase.PLAYING -> {
 
                             Column(
@@ -505,210 +498,4 @@ fun GameScreen(
             } // end Column
         } // end Scaffold content lambda
     } // end ModalNavigationDrawer
-}
-
-
-@Composable
-fun LeagueTopBar(
-    completedLeagues: Set<League>,
-    onLeagueSelected: (League) -> Unit,
-    isLeagueLocked: Boolean,
-    onMenuClick: () -> Unit
-) {
-    Surface(
-        tonalElevation = 4.dp,
-        modifier = Modifier
-            .statusBarsPadding()
-            .height(44.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = onMenuClick,
-                modifier = Modifier
-                    .size(36.dp)
-                    .padding(start = 4.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.fleur_de_lis),
-                    contentDescription = "Menu",
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-
-            League.entries.forEach { league ->
-                val isNotCompleted = league !in completedLeagues
-                val enabled = isNotCompleted && !isLeagueLocked
-
-                Text(
-                    text = league.name
-                        .lowercase()
-                        .replaceFirstChar { it.uppercase() },
-                    fontWeight = FontWeight.Normal,
-                    fontFamily = DeutschGothic,
-                    letterSpacing = 2.sp,
-                    fontSize = 22.sp,
-                    color = if (enabled) Color(0xFF1478F6) else Color.Gray,
-                    modifier = Modifier.clickable(enabled = enabled) {
-                        onLeagueSelected(league)
-                    }
-                )
-            }
-        }
-    }
-}
-
-
-@SuppressLint("Range")
-@Composable
-fun CastleCard(
-    castle: CastleItem,
-    currentLeague: League?,
-    enabled: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    val isLandscape =
-        LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-
-    Card(
-        modifier = modifier
-            .then(
-                if (isLandscape) {
-                    Modifier.aspectRatio(16f / 9f)
-                } else {
-                    Modifier.height(260.dp)
-                }
-            )
-            .alpha(if (enabled) 1f else 0.4f)
-            .clickable(enabled = enabled, onClick = onClick),
-        elevation = CardDefaults.cardElevation(6.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1A1A1A)
-        )
-    ) {
-        Column {
-            AsyncImage(
-                model = castle.imageUrl.firstOrNull(),
-                contentDescription = "${castle.title} - ${castle.country}",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(if (isLandscape) 180.dp else 200.dp)
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.Black.copy(alpha = 0.7f))
-                    .padding(8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "${castle.title} - ${castle.country}",
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2
-                )
-            }
-        }
-    }
-}
-
-
-@Composable
-fun CastleRow(
-    pair: Pair<CastleItem, CastleItem>,
-    currentLeague: League?,
-    selectedIndex: Int?,
-    enabled: Boolean,
-    onSelect: (Int) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        CastleCard(
-            castle = pair.first,
-            currentLeague = currentLeague,
-            enabled = enabled,
-            modifier = Modifier.weight(1f),
-            onClick = { onSelect(0) },
-        )
-        CastleCard(
-            castle = pair.second,
-            currentLeague = currentLeague,
-            enabled = enabled,
-            modifier = Modifier.weight(1f),
-            onClick = { onSelect(1) },
-        )
-    }
-}
-
-@Composable
-fun GameBottomBar(
-    remaining: Int,
-    total: Int,
-    visible: Boolean
-) {
-    if (!visible) return
-
-    val progress = if (total > 0) remaining.toFloat() / total.toFloat() else 0f
-
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                start = 16.dp,
-                end = 16.dp,
-                bottom = 56.dp
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(30.dp),
-            elevation = CardDefaults.cardElevation(12.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = 20.dp,
-                        vertical = if (isLandscape) 8.dp else 16.dp
-                    ),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                if (!isLandscape) {
-                    Text(
-                        text = "$remaining GAMES LEFT",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1478F6)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(if (isLandscape) 5.dp else 10.dp)
-                        .clip(RoundedCornerShape(50)),
-                    trackColor = Color.LightGray,
-                    color = Color(0xFF1478F6)
-                )
-            }
-        }
-    }
-}
+}*/
