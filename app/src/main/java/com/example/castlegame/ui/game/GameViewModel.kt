@@ -82,7 +82,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 it.copy(
                     leagues = leagues,
                     currentLeague = startLeague,
-                    availableCountries = countries   // 🆕
+                    availableCountries = countries
                 )
             }
 
@@ -636,27 +636,62 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     fun continueFromRanking() {
-        val completed = _uiState.value.completedLeagues.size
-        val total = League.entries.size
+        val state     = _uiState.value
+        val completed = state.completedLeagues
+        val total     = League.entries.size
 
-        if (completed == total) {
-            // All leagues done → Start SuperLeague
-         //   Log.d("GameViewModel", "All leagues completed, starting SuperLeague")
+        if (completed.size == total) {
+            // All four leagues done → start SuperLeague
             startSuperLeague()
         } else {
-            // More leagues to play → Back to league selection
+            // Auto-advance to the next unplayed league in declaration order
             tapCounts.clear()
+            winCounts.clear()
+            headToHead.clear()
 
-            _uiState.update {
-                it.copy(
-                    currentLeague = null,
-                    leagueWinner = null,
-                    phase = GamePhase.SELECT_LEAGUE,
-                    buttonText = "Select League"
-                )
+            val nextLeague = League.entries.firstOrNull { it !in completed }
+
+            if (nextLeague != null) {
+                // Start it immediately — no manual selection needed
+                selectLeague(nextLeague)
+            } else {
+                // Fallback — should never happen, but stay safe
+                _uiState.update {
+                    it.copy(
+                        currentLeague = null,
+                        leagueWinner  = null,
+                        phase         = GamePhase.SELECT_LEAGUE,
+                        buttonText    = "Select League"
+                    )
+                }
             }
         }
     }
+
+
+    /*    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
+        fun continueFromRanking() {
+            val completed = _uiState.value.completedLeagues.size
+            val total = League.entries.size
+
+            if (completed == total) {
+                // All leagues done → Start SuperLeague
+             //   Log.d("GameViewModel", "All leagues completed, starting SuperLeague")
+                startSuperLeague()
+            } else {
+                // More leagues to play → Back to league selection
+                tapCounts.clear()
+
+                _uiState.update {
+                    it.copy(
+                        currentLeague = null,
+                        leagueWinner = null,
+                        phase = GamePhase.SELECT_LEAGUE,
+                        buttonText = "Select League"
+                    )
+                }
+            }
+        }*/
 
 
 
@@ -700,7 +735,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
 
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
-    private fun startSuperLeague() {
+    fun startSuperLeague() {
         Log.d("GameViewModel", "SuperLeague here starts")
 
         // ✅ Use leagueTopResults which was populated correctly after each league finished
@@ -1212,7 +1247,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     // ── (h) New: startUserPersonalSuperLeague()
 //    Takes the winner from each user league and runs a superleague between them.
 
-    private fun startUserPersonalSuperLeague() {
+    fun startUserPersonalSuperLeague() {
         val superCastles = _uiState.value.userLeagueTopResults.values.toList()
 
         if (superCastles.size < 2) {

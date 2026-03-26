@@ -55,22 +55,27 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
+    
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.foundation)
-    implementation(libs.androidx.room.ktx)
-    implementation(libs.androidx.compose.remote.creation.core)
-    implementation(libs.androidx.compose.runtime)
-    implementation(libs.androidx.benchmark.traceprocessor)
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.runtime)
-    implementation(libs.androidx.camera.camera2.pipe)
-    implementation(libs.androidx.material3)
     implementation(libs.androidx.compose.animation)
+    implementation(libs.androidx.compose.runtime)
+    implementation(libs.compose.material.icons.extended)
+
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.room.ktx)
+    
+    implementation(libs.androidx.compose.remote.creation.core)
+    implementation(libs.androidx.benchmark.traceprocessor)
+    implementation(libs.androidx.camera.camera2.pipe)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -78,32 +83,20 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-    implementation(libs.compose.material.icons.extended)
 
     implementation("com.facebook.android:facebook-login:18.1.3")
-
     implementation("com.google.android.gms:play-services-auth:21.5.1")
-
-
-
     implementation("io.coil-kt:coil-compose:2.7.0")
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     // Networking
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.moshi)
-
     implementation(libs.moshi.core)
     implementation(libs.moshi.kotlin)
-
     implementation(libs.okhttp)
 
     // Firebase BoM (Bill of Materials) - manages versions
     implementation(platform("com.google.firebase:firebase-bom:34.9.0"))
-
-    // Firebase dependencies (no version needed when using BoM)
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
-
-    implementation(libs.androidx.navigation.compose)
 }

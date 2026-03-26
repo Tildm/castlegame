@@ -24,6 +24,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+
+
         try {
             val info = packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNATURES)
             for (signature in info.signatures!!) {
@@ -37,11 +39,11 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val authViewModel: AuthViewModel = viewModel()
-            val gameViewModel: GameViewModel = viewModel()
+          // val gameViewModel: GameViewModel = viewModel()
 
             AppNavigation(
                 authViewModel = authViewModel,
-               gameViewModel = gameViewModel
+             //  gameViewModel = gameViewModel
             )
         }
     }
