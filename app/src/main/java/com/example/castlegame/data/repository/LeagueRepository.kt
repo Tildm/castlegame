@@ -29,15 +29,16 @@ class LeagueRepository {
                     imageUrl    = castle.image.map { it.url },
                     title       = castle.title,
                     id          = castle.id,
-                    country     = castle.country,
-                    description = castle.description,
-                    wikiUrl     = castle.wikiUrl,
                     text        = castle.text,
+                    wikiUrl     = castle.wikiUrl,
+                    country     = castle.country,
                     built       = castle.built,
                     style       = castle.style,
+                    description = castle.description,
                     visiting    = castle.visiting,
                     location    = castle.location,
-                    group       = castle.group
+                    group       = castle.group,
+                    webUrl = ""
                 )
             }
         } catch (e: Exception) {
@@ -71,15 +72,17 @@ class LeagueRepository {
                 imageUrl    = castle.image.map { it.url },
                 title       = castle.title,
                 id          = castle.id,
-                country     = castle.country,
-                description = castle.description,
-                wikiUrl     = castle.wikiUrl,
                 text        = castle.text,
+                wikiUrl     = castle.wikiUrl,
+                country     = castle.country,
                 built       = castle.built,
                 style       = castle.style,
+                description = castle.description,
                 visiting    = castle.visiting,
                 location    = castle.location,
-                group       = castle.group      // ✅ make sure CastleItem has this field
+                group       = castle.group,
+                webUrl = ""
+                // ✅ make sure CastleItem has this field
             )
             apiCastleById[castle.id] = item
             when (castle.group) {
@@ -144,12 +147,13 @@ class LeagueRepository {
                 // Look up the full CastleItem from API data (has imageUrl, description, etc.)
                 // Fall back to a minimal CastleItem if not found in API
                 val fullCastle = apiCastleById[castleId] ?: CastleItem(
-                    id = castleId,
+                    imageUrl = emptyList(),
                     title = winnerDoc.getString("castleTitle") ?: "",
+                    id = castleId,
+                    text = "",
                     country = country,
                     group = group,
-                    imageUrl = emptyList(),
-                    text = "",
+                    webUrl = ""
 
                 )
 
@@ -609,12 +613,13 @@ fun saveCountryResult(
             castles
                 .map { entry ->
                     val castle = CastleItem(
-                        id       = entry["castleId"]    as? String ?: "",
+                        imageUrl = listOfNotNull(entry["imageUrl"] as? String),
                         title    = entry["castleTitle"] as? String ?: "",
+                        id       = entry["castleId"]    as? String ?: "",
+                        text     = "",
                         country  = entry["country"]     as? String ?: "",
                         group    = entry["group"]       as? String ?: "",
-                        imageUrl = listOfNotNull(entry["imageUrl"] as? String),
-                        text     = ""
+                        webUrl = ""
                     )
                     val wins = (entry["wins"] as? Long)?.toInt() ?: 0
                     castle to wins
@@ -769,5 +774,49 @@ fun saveCountryResult(
         }
     }
 
+
+
+/**
+ * Loads the community-wide cumulative ranking for [leagueId] from
+ * global_leagues_ranking, enriched with full CastleItem data from [allCastles].
+ *
+ * Mirrors loadGlobalCountryRanking() in GlobalRepository.
+ */
+suspend fun loadGlobalLeagueRanking(
+    leagueId: String,
+    allCastles: List<CastleItem>,
+    onSuccess: (List<Pair<CastleItem, Int>>) -> Unit,
+    onError: (Exception) -> Unit = {}
+) {
+    val castleById = allCastles.associateBy { it.id }
+
+    try {
+        val snapshot = db
+            .collection("global_leagues_ranking")
+            .whereEqualTo("leagueId", leagueId)
+            .get()
+            .await()
+
+        val ranking = snapshot.documents.mapNotNull { doc ->
+            val castleId    = doc.getString("castleId")    ?: return@mapNotNull null
+            val castleTitle = doc.getString("castleTitle") ?: ""
+            val wins        = (doc.getLong("wins") ?: 0L).toInt()
+
+            val castle = castleById[castleId] ?: CastleItem(
+                imageUrl = emptyList(),
+                title    = castleTitle,
+                id       = castleId,
+                text     = "",
+                webUrl = ""
+            )
+            castle to wins
+        }.sortedByDescending { it.second }
+
+        onSuccess(ranking)
+    } catch (e: Exception) {
+        Log.e("LeagueRepository", "Failed to load global league ranking for $leagueId", e)
+        onError(e)
+    }
+}
 
 }

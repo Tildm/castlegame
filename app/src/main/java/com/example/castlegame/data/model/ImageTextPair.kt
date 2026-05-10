@@ -14,6 +14,7 @@ data class CastleItem(
     val description: String = "",
     val visiting: String = "",
     val location: String = "",
-    val group: String = ""
+    val group: String = "",
+    val webUrl: String
 )
 

@@ -95,6 +95,18 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun headToHeadComparator() = Comparator<Pair<CastleItem, Int>> { a, b ->
+        if (a.second == b.second) {
+            val key = listOf(a.first.id, b.first.id).sorted()
+            when (headToHead[key[0] to key[1]]) {
+                a.first.id -> -1
+                b.first.id -> 1
+                else -> 0
+            }
+        } else 0
+    }
+
+
     private fun promoteCountryWinnersIfNewWeek(countries: List<String>) {
         val calendar = java.util.Calendar.getInstance()
         val year  = calendar.get(java.util.Calendar.YEAR)
@@ -128,6 +140,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         // Clear win counts for the new league
         winCounts.clear()
+        headToHead.clear() // prevents stale results bleeding in from previous league
 
         val castles = _uiState.value.leagues[league] ?: return
 
@@ -355,16 +368,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
 
-        // 🥇🥈 TOP 2 selection - ✅ FIX: Use winCounts
-        val top2Ids = winCounts
-            .toList()
-            .sortedByDescending { it.second }
+        // 🥇🥈 TOP 2 selection with head-to-head tiebreaker
+        val top2Castles = (state.leagues[league] ?: emptyList())
+            .map { castle -> castle to (winCounts[castle.id] ?: 0) }
+            .sortedWith(compareByDescending<Pair<CastleItem, Int>> { it.second }.then(headToHeadComparator()))
             .take(2)
             .map { it.first }
-
-        val top2Castles = state.leagues[league]
-            ?.filter { it.id in top2Ids }
-            ?: emptyList()
 
         leagueTopResults[league] = top2Castles
 
@@ -397,10 +406,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     // 🌍 Finish country tournament — shows winner then goes back to SELECT_LEAGUE
     private fun finishCountryTournament() {
         val country = _uiState.value.currentCountry ?: return
-        val castles = allCastles.filter { it.country == country }
 
-        val winnerId = winCounts.maxByOrNull { it.value }?.key
-        val winner = castles.firstOrNull { it.id == winnerId }
+        // ✅ Use getCountryRanking() which already has head-to-head tiebreaker
+        val rankedCastles = getCountryRanking()
+        val winner = rankedCastles.firstOrNull()?.first
+
 
         Log.d("GameViewModel", "Country winner = $winner")
 
@@ -444,20 +454,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         return castles
             .map { castle -> castle to (winCounts[castle.id] ?: 0) }
-            .sortedWith(
-                compareByDescending<Pair<CastleItem, Int>> { it.second }
-                    .thenComparator { a, b ->
-                        if (a.second == b.second) {
-                            val key = listOf(a.first.id, b.first.id).sorted()
-                            val winnerId = headToHead[key[0] to key[1]]
-                            when (winnerId) {
-                                a.first.id -> -1
-                                b.first.id -> 1
-                                else -> 0
-                            }
-                        } else 0
-                    }
-            )
+            .sortedWith(compareByDescending<Pair<CastleItem, Int>> { it.second }.then(headToHeadComparator()))
     }
 
     // 🌍 After viewing country ranking, return to main menu
@@ -479,6 +476,40 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     fun continueFromWinner() {
+        val league = _uiState.value.currentLeague ?: return
+        val leagueId = league.name
+
+        _uiState.update {
+            it.copy(
+                leagueWinner           = null,
+                currentPair            = null,
+                phase                  = GamePhase.LEAGUE_RANKING,
+                isLeagueRankingLoading = true,
+                globalLeagueRanking    = emptyList()
+            )
+        }
+
+        viewModelScope.launch {
+            repository.loadGlobalLeagueRanking(
+                leagueId   = leagueId,
+                allCastles = allCastles,
+                onSuccess  = { list ->
+                    _uiState.update {
+                        it.copy(
+                            globalLeagueRanking    = list,
+                            isLeagueRankingLoading = false
+                        )
+                    }
+                },
+                onError = { e ->
+                    Log.e("GameViewModel", "Failed to load global league ranking", e)
+                    _uiState.update { it.copy(isLeagueRankingLoading = false) }
+                }
+            )
+        }
+    }
+  /*  @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
+    fun continueFromWinner() {
         // Always show ranking first
         _uiState.update {
             it.copy(
@@ -487,6 +518,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 phase = GamePhase.LEAGUE_RANKING
             )
         }
+    }*/
+
+    /** Switches from Top Rated (global) to the user's own in-memory ranking. */
+    fun goToUserLeagueRanking() {
+        _uiState.update { it.copy(phase = GamePhase.USER_LEAGUE_RANKING) }
+    }
+
+    /** Switches back from user league ranking to the global Top Rated view. */
+    fun goToGlobalLeagueRanking() {
+        _uiState.update { it.copy(phase = GamePhase.LEAGUE_RANKING) }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -790,31 +831,32 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         val superLeagueCastles = _uiState.value.superLeagueCastles
 
+        // ✅ Sort with head-to-head tiebreaker
+        val sortedCastles = superLeagueCastles
+            .map { castle -> castle to (winCounts[castle.id] ?: 0) }
+            .sortedWith(compareByDescending<Pair<CastleItem, Int>> { it.second }.then(headToHeadComparator()))
+
         // Find the winner (castle with most wins)
-        val winner = superLeagueCastles.maxByOrNull { castle ->
-            winCounts[castle.id] ?: 0
-        }
+        val winner = sortedCastles.firstOrNull()?.first
 
         Log.d("GameViewModel", "SuperLeague winner = $winner")
 
         // Create global ranking
-        val globalRanking = superLeagueCastles.map { castle ->
+        val globalRanking = sortedCastles.map { (castle, wins) ->
             GlobalCastle(
-                id = castle.id,
-                title = castle.title,
-                imageUrl = castle.imageUrl,
-                wins = winCounts[castle.id] ?: 0,
+                id          = castle.id,
+                title       = castle.title,
+                imageUrl    = castle.imageUrl,
+                wins        = wins,
                 description = castle.description,
-                visiting = castle.visiting,
-                wikiUrl = castle.wikiUrl,
-                country = castle.country,
-                location = castle.location,
-                style = castle.style,
-                built = castle.built,
+                visiting    = castle.visiting,
+                wikiUrl     = castle.wikiUrl,
+                country     = castle.country,
+                location    = castle.location,
+                style       = castle.style,
+                built       = castle.built,
             )
-        }.sortedByDescending { it.wins }
-
-
+        }
 
         _uiState.update { state ->
             state.copy(
@@ -897,8 +939,40 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
 
-
     fun backToMenu() {
+        Log.d("GameViewModel", "Back to menu")
+        winCounts.clear()
+        headToHead.clear()
+        _uiState.update {
+            it.copy(
+                phase                           = GamePhase.SELECT_LEAGUE,
+                // global league reset
+                completedLeagues                = emptySet(),
+                leagueWinner                    = null,
+                superLeagueCastles              = emptyList(),
+                superLeagueWinner               = null,
+                globalRanking                   = emptyList(),
+                // personal league flow — full reset
+                userLeagueCastles               = emptyMap(),
+                userLeagueWinner                = null,
+                userLeagueCompletedLeagues      = emptySet(),
+                userLeagueTopResults            = emptyMap(),
+                myEuroLeaguePlayed              = false,
+                mySuperLeaguePlayed             = false,
+                // personal superleague — full reset
+                userPersonalSuperLeagueCastles  = emptyList(),
+                userPersonalSuperLeagueWinner   = null,
+                userPersonalSuperLeagueRanking  = emptyList(),
+                // navigation state
+                remainingGames                  = 0,
+                selectedIndex                   = null,
+                currentLeague                   = null,
+                leagueLocked                    = false,
+                currentPair                     = null,
+            )
+        }
+    }
+    /*fun backToMenu() {
         Log.d("GameViewModel", "Back to menu")
 
         _uiState.update {
@@ -920,7 +994,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 currentPair = null,
             )
         }
-    }
+    }*/
 
 
     private fun loadUserSuperLeagueRanking(): List<Pair<CastleItem, Int>> {
@@ -1174,7 +1248,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 currentPair                = null,
                 leagueLocked               = false,
                 selectedIndex              = null,
-                remainingGames             = 0
+                remainingGames             = 0,
+                //myEuroLeaguePlayed            = true,
             )
         }
     }
@@ -1202,20 +1277,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         return castles
             .map { castle -> castle to (winCounts[castle.id] ?: 0) }
-            .sortedWith(
-                compareByDescending<Pair<CastleItem, Int>> { it.second }
-                    .thenComparator { a, b ->
-                        if (a.second == b.second) {
-                            val key      = listOf(a.first.id, b.first.id).sorted()
-                            val winnerId = headToHead[key[0] to key[1]]
-                            when (winnerId) {
-                                a.first.id -> -1
-                                b.first.id -> 1
-                                else       -> 0
-                            }
-                        } else 0
-                    }
-            )
+            .sortedWith(compareByDescending<Pair<CastleItem, Int>> { it.second }.then(headToHeadComparator()))
     }
 
 
@@ -1237,6 +1299,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         if (remaining.isEmpty()) {
             // All playable leagues done → personal superleague
             startUserPersonalSuperLeague()
+            Log.d("GameViewModel", "startUserPersonalSuperLeague")
         } else {
             // Pick next league
             selectUserLeague(remaining.first())
@@ -1271,7 +1334,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 currentPair                  = firstPair,
                 remainingGames               = totalGames,
                 selectedIndex                = null,
-                leagueLocked                 = true
+                leagueLocked                 = true,
+                myEuroLeaguePlayed            = true,
             )
         }
     }
@@ -1280,15 +1344,21 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun finishUserPersonalSuperLeague() {
         val castles = _uiState.value.userPersonalSuperLeagueCastles
-        val winner  = castles.maxByOrNull { winCounts[it.id] ?: 0 }
+
+        // ✅ Sort with head-to-head tiebreaker
+        val sortedCastles = castles
+            .map { castle -> castle to (winCounts[castle.id] ?: 0) }
+            .sortedWith(compareByDescending<Pair<CastleItem, Int>> { it.second }.then(headToHeadComparator()))
+
+        val winner = sortedCastles.firstOrNull()?.first
 
         // ✅ Build GlobalCastle list — mirrors finishSuperLeague()
-        val globalRanking = castles.map { castle ->
+        val globalRanking = sortedCastles.map { (castle, wins) ->
             GlobalCastle(
                 id          = castle.id,
                 title       = castle.title,
                 imageUrl    = castle.imageUrl,
-                wins        = winCounts[castle.id] ?: 0,
+                wins        = wins,
                 description = castle.description,
                 visiting    = castle.visiting,
                 wikiUrl     = castle.wikiUrl,
@@ -1297,8 +1367,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 style       = castle.style,
                 built       = castle.built,
             )
-        }.sortedByDescending { it.wins }
-
+        }
         // ✅ Save to global_superleague_ranking + global_superleague_weekly_ranking
         globalRepository.saveSuperLeagueResultsWithHistory(
             userId  = userId,
@@ -1314,48 +1383,112 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 phase          = GamePhase.USER_PERSONAL_SUPERLEAGUE_WINNER,
                 currentPair    = null,
                 selectedIndex  = null,
-                remainingGames = 0
+                remainingGames = 0,
+                mySuperLeaguePlayed = true,
             )
         }
     }
 
-/*    private fun finishUserPersonalSuperLeague() {
-        val castles = _uiState.value.userPersonalSuperLeagueCastles
-        val winner  = castles.maxByOrNull { winCounts[it.id] ?: 0 }
-
-        _uiState.update {
-            it.copy(
-                userPersonalSuperLeagueWinner = winner,
-                phase         = GamePhase.USER_PERSONAL_SUPERLEAGUE_WINNER,
-                currentPair   = null,
-                selectedIndex = null,
-                remainingGames = 0
-            )
-        }
-    }*/
 
 // ── (j) New: continueFromUserPersonalSuperLeagueWinner()
 
     fun continueFromUserPersonalSuperLeagueWinner() {
         val castles = _uiState.value.userPersonalSuperLeagueCastles
 
+        // ✅ Sort with head-to-head tiebreaker
         val ranking = castles
             .map { castle -> castle to (winCounts[castle.id] ?: 0) }
-            .sortedByDescending { it.second }
+            .sortedWith(compareByDescending<Pair<CastleItem, Int>> { it.second }.then(headToHeadComparator()))
 
         _uiState.update {
             it.copy(
                 phase                           = GamePhase.USER_PERSONAL_SUPERLEAGUE_RANKING,
                 userPersonalSuperLeagueRanking  = ranking,
                 currentPair                     = null,
-                selectedIndex                   = null
+                selectedIndex                   = null,
+                mySuperLeaguePlayed             = true,
             )
         }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
+    fun goToSuperLeagueFromPersonalSuperLeague() {
+        // Reset only personal superleague state, keep league data intact
+        _uiState.update {
+            it.copy(
+                userPersonalSuperLeagueCastles = emptyList(),
+                userPersonalSuperLeagueWinner  = null,
+                userPersonalSuperLeagueRanking = emptyList(),
+                currentLeague                  = null,
+                currentPair                    = null,
+                selectedIndex                  = null,
+                remainingGames                 = 0,
+            )
+        }
+        startSuperLeague()
     }
 
 // ── (k) New: backToMenuFromPersonalSuperLeague()
 
     fun backToMenuFromPersonalSuperLeague() {
+        winCounts.clear()
+        headToHead.clear()
+        _uiState.update {
+            it.copy(
+                phase                           = GamePhase.SELECT_LEAGUE,
+                completedLeagues                = emptySet(),
+                // personal league flow — full reset
+                userLeagueCastles               = emptyMap(),
+                userLeagueWinner                = null,
+                userLeagueCompletedLeagues      = emptySet(),
+                userLeagueTopResults            = emptyMap(),
+                myEuroLeaguePlayed              = false,
+                mySuperLeaguePlayed             = false,
+                // personal superleague — full reset
+                userPersonalSuperLeagueCastles  = emptyList(),
+                userPersonalSuperLeagueWinner   = null,
+                userPersonalSuperLeagueRanking  = emptyList(),
+                // global superleague — reset so link goes inactive
+                superLeagueCastles              = emptyList(),
+                superLeagueWinner               = null,
+                // navigation state
+                currentLeague                   = null,
+                currentPair                     = null,
+                selectedIndex                   = null,
+                leagueLocked                    = false,
+                remainingGames                  = 0,
+            )
+        }
+    }
+
+    // Add these three simple functions:
+
+    fun openQuiz() {
+        _uiState.update { it.copy(phase = GamePhase.QUIZ) }
+    }
+
+    fun openQuizSummary() {
+        _uiState.update { it.copy(phase = GamePhase.QUIZ_SUMMARY) }
+    }
+
+    fun exitQuiz() {
+        _uiState.update { it.copy(phase = GamePhase.SELECT_LEAGUE) }
+    }
+
+    fun findCastleById(castleId: String?): CastleItem? {
+        if (castleId == null) return null
+        android.util.Log.d("QuizLookup", "Looking for castleId=$castleId in ${allCastles.size} castles")
+        return allCastles.find { it.id == castleId }
+    }
+
+    fun findCastleByTitleAndCountry(title: String, country: String): CastleItem? {
+        return allCastles.find {
+            it.title.equals(title, ignoreCase = true) &&
+                    it.country.equals(country, ignoreCase = true)
+        }
+    }
+
+   /* fun backToMenuFromPersonalSuperLeague() {
         winCounts.clear()
         headToHead.clear()
         _uiState.update {
@@ -1369,8 +1502,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 currentPair                     = null,
                 selectedIndex                   = null,
                 leagueLocked                    = false,
-                remainingGames                  = 0
+                remainingGames                  = 0,
+                myEuroLeaguePlayed              = false,
+                mySuperLeaguePlayed             = false,
             )
         }
-    }
+    }*/
 }

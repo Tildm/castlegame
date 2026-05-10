@@ -75,6 +75,10 @@ dependencies {
     implementation(libs.androidx.compose.remote.creation.core)
     implementation(libs.androidx.benchmark.traceprocessor)
     implementation(libs.androidx.camera.camera2.pipe)
+    implementation(libs.androidx.runtime)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.androidx.ui)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -85,6 +89,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     implementation("com.facebook.android:facebook-login:18.1.3")
+    implementation("com.facebook.android:facebook-share:18.1.3")
     implementation("com.google.android.gms:play-services-auth:21.5.1")
     implementation("io.coil-kt:coil-compose:2.7.0")
 
@@ -96,7 +101,11 @@ dependencies {
     implementation(libs.okhttp)
 
     // Firebase BoM (Bill of Materials) - manages versions
-    implementation(platform("com.google.firebase:firebase-bom:34.9.0"))
+    implementation(platform("com.google.firebase:firebase-bom:34.11.0"))
+    implementation("com.google.firebase:firebase-messaging")
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
+
+    // Ez a könyvtár kezeli a Compose nézetek képpé alakítását
+    implementation("dev.shreyaspatil:capturable:2.1.0")
 }

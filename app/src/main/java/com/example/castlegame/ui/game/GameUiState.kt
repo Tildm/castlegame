@@ -2,6 +2,75 @@ package com.example.castlegame.ui.game
 
 import com.example.castlegame.data.model.CastleItem
 import com.example.castlegame.data.model.GlobalCastle
+import com.example.castlegame.data.model.League
+
+data class GameUiState(
+    val leagues: Map<League, List<CastleItem>> = emptyMap(),
+
+    val currentLeague: League? = null,
+    val completedLeagues: Set<League> = emptySet(),
+
+    val internationalCastles: List<CastleItem> = emptyList(),
+    val internationalWinner: CastleItem? = null,
+
+    val currentPair: Pair<CastleItem, CastleItem>? = null,
+    val remainingGames: Int = 0,
+
+    val selectedIndex: Int? = null,
+    val canProceed: Boolean = false,
+    val leagueLocked: Boolean = false,
+
+    val buttonText: String = "Select League",
+
+    // ── UI flow ──────────────────────────────────────────────────────────────
+    val phase: GamePhase = GamePhase.SELECT_LEAGUE,
+
+    // ── League ───────────────────────────────────────────────────────────────
+    val leagueWinner: CastleItem? = null,
+    val globalLeagueRanking: List<Pair<CastleItem, Int>> = emptyList(),
+    val isLeagueRankingLoading: Boolean = false,
+
+    // ── SuperLeague ──────────────────────────────────────────────────────────
+    val superLeagueCastles: List<CastleItem> = emptyList(),
+    val superLeagueWinner: CastleItem? = null,
+    val globalRanking: List<GlobalCastle> = emptyList(),
+    val userSuperLeagueRanking: List<Pair<CastleItem, Int>> = emptyList(),
+
+    // ── Country ──────────────────────────────────────────────────────────────
+    val availableCountries: List<String> = emptyList(),
+    val currentCountry: String? = null,
+    val countryWinner: CastleItem? = null,
+    val playedCountries: Set<String> = emptySet(),
+    val allCountriesPlayed: Boolean = false,
+    val globalCountryRanking: List<GlobalCastle> = emptyList(),
+    val isCountryRankingLoading: Boolean = false,
+    val userCountryRanking: List<Pair<CastleItem, Int>> = emptyList(),
+
+    // ── Personal league flow ─────────────────────────────────────────────────
+    val userLeagueCastles: Map<League, List<CastleItem>> = emptyMap(),
+    val userLeagueWinner: CastleItem? = null,
+    val userLeagueCompletedLeagues: Set<League> = emptySet(),
+    val userLeagueTopResults: Map<League, CastleItem> = emptyMap(),
+    val myEuroLeaguePlayed: Boolean = false,   // ← ADD THIS
+
+    // ── Personal SuperLeague flow ────────────────────────────────────────────
+    val userPersonalSuperLeagueCastles: List<CastleItem> = emptyList(),
+    val userPersonalSuperLeagueWinner: CastleItem? = null,
+    val userPersonalSuperLeagueRanking: List<Pair<CastleItem, Int>> = emptyList(),
+    val mySuperLeaguePlayed: Boolean = false,
+
+    // ── Misc ─────────────────────────────────────────────────────────────────
+    val castleForInfo: CastleItem? = null,
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val infoMessage: String? = null,
+)
+
+/*
+package com.example.castlegame.ui.game
+
+import com.example.castlegame.data.model.CastleItem
+import com.example.castlegame.data.model.GlobalCastle
 
 import com.example.castlegame.data.model.League
 
@@ -64,5 +133,9 @@ data class GameUiState(
     val userPersonalSuperLeagueWinner: CastleItem? = null,
     val userPersonalSuperLeagueRanking: List<Pair<CastleItem, Int>> = emptyList(),
 
+    val globalLeagueRanking: List<Pair<CastleItem, Int>> = emptyList(),
+    val isLeagueRankingLoading: Boolean = false,
+
 
 )
+*/

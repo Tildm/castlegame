@@ -1,6 +1,7 @@
 package com.example.castlegame.ui.game
 
 import android.content.Intent
+import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -32,7 +33,9 @@ import androidx.core.net.toUri
 fun WinnerScreen(
     league: League?,
     winner: CastleItem,
-    onContinue: () -> Unit
+    onContinue: () -> Unit,
+    countryName: String? = null,
+    customTitle: String? = null,
 ) {
     Column(
         modifier = Modifier
@@ -42,7 +45,9 @@ fun WinnerScreen(
 
         HeroSection(
             league = league,
-            winner = winner
+            winner = winner,
+            countryName = countryName,
+            customTitle = customTitle,
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -71,7 +76,9 @@ fun WinnerScreen(
 @Composable
 private fun HeroSection(
     league: League?,
-    winner: CastleItem
+    winner: CastleItem,
+    countryName: String? = null,
+    customTitle: String? = null,
 ) {
     // Build the image list: primary imageUrl first, then up to 4 extras, capped at 5 total.
     // Assumes CastleItem may have an `imageUrls: List<String>` field with additional images.
@@ -195,9 +202,14 @@ private fun HeroSection(
                 // Leave room for dots if shown
                 .padding(end = if (allImages.size > 1) 48.dp else 0.dp)
         ) {
+            Log.d("WinnerScreen", "Country Name winner = $countryName")
             Text(
-                text = league?.let { "🏆 ${it.name} Winner" }
-                    ?: "🏆 Super League Winner",
+                text = when {
+                    customTitle != null -> customTitle
+                    league != null      -> "🏆 ${league.name} Winner"
+                    countryName != null -> "🏆 $countryName Winner"
+                    else                -> "🏆 Super League Winner"
+                },
                 color = Color.White,
                 fontSize = 14.sp
             )
