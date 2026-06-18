@@ -9,7 +9,11 @@ import com.example.castlegame.ui.auth.AuthViewModel
 import com.example.castlegame.ui.auth.LoginScreen
 import com.example.castlegame.ui.auth.ProfileScreen
 import com.example.castlegame.ui.auth.RegisterScreen
+
 import com.example.castlegame.ui.game.GameScreen
+import com.example.castlegame.ui.tooltip.FaqScreen
+import com.example.castlegame.ui.tooltip.LegalNoticesScreen
+import com.example.castlegame.ui.tooltip.PrivacySummaryScreen
 
 @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
 @Composable
@@ -56,13 +60,25 @@ fun AppNavigation(
                 GameScreen(
                     viewModel      = viewModel(),
                     onLogout       = authViewModel::logout,
-                    onProfileClick = { navController.navigate("profile") }
+                    onProfileClick = { navController.navigate("profile") },
+                    onFaqClick     = { navController.navigate("faq") },
+                    onLegalNoticesClick = { navController.navigate("legal_notices") },
+                    onPrivacySummaryClick  = { navController.navigate("privacy_summary") },
                 )
             }
         }
 
         composable("profile") {
             ProfileScreen(onBack = { navController.popBackStack() })
+        }
+        composable("faq") {
+            FaqScreen(onBack = { navController.popBackStack() })
+        }
+        composable("legal_notices") {
+            LegalNoticesScreen(onBack = { navController.popBackStack() })
+        }
+        composable("privacy_summary") {
+            PrivacySummaryScreen(onBack = { navController.popBackStack() })
         }
     }
 }

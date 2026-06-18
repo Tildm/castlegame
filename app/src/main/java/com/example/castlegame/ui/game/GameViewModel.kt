@@ -90,7 +90,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             promoteCountryWinnersIfNewWeek(countries)
 
             loadPlayedCountries()
-
+            loadPersistedProgress()
             resetGame(pairs)
         }
     }
@@ -324,6 +324,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val state = _uiState.value
         val league = _uiState.value.currentLeague ?: return
         val updated = _uiState.value.completedLeagues + league
+        _uiState.update { it.copy(completedLeagues = updated) }
+        viewModelScope.launch {
+            repository.saveCompletedLeagues(updated)   // ← ADD THIS
+        }
 
        // Log.d("GameViewModel", "finishLeague CALLED")
       //  Log.d("GameViewModel", "Current phase BEFORE update: ${state.phase}")
@@ -971,6 +975,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 currentPair                     = null,
             )
         }
+        viewModelScope.launch {
+            repository.saveCompletedLeagues(emptySet())   // ← ADD THIS
+        }
     }
     /*fun backToMenu() {
         Log.d("GameViewModel", "Back to menu")
@@ -1079,6 +1086,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     playedCountries    = played,
                     allCountriesPlayed = allPlayed
                 )
+            }
+        }
+    }
+
+   private fun loadPersistedProgress() {
+        viewModelScope.launch {
+            val completedLeagues = repository.loadCompletedLeagues()
+            if (completedLeagues.isNotEmpty()) {
+                _uiState.update {
+                    it.copy(completedLeagues = completedLeagues)
+                }
             }
         }
     }
@@ -1425,6 +1443,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 remainingGames                 = 0,
             )
         }
+
         startSuperLeague()
     }
 
@@ -1459,6 +1478,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 remainingGames                  = 0,
             )
         }
+        viewModelScope.launch {
+            repository.saveCompletedLeagues(emptySet()) }  // ← ADD THIS
     }
 
     // Add these three simple functions:

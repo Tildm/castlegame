@@ -819,4 +819,47 @@ suspend fun loadGlobalLeagueRanking(
     }
 }
 
+    // ── Persist completed leagues ─────────────────────────────────────────────
+
+    suspend fun saveCompletedLeagues(completedLeagues: Set<League>) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        try {
+            db.collection("users")
+                .document(uid)
+                .collection("progress")
+                .document("completed_leagues")
+                .set(mapOf(
+                    "leagues"   to completedLeagues.map { it.name },
+                    "updatedAt" to FieldValue.serverTimestamp()
+                ))
+                .await()
+            Log.d("LeagueRepository", "Saved completedLeagues: ${completedLeagues.map { it.name }}")
+        } catch (e: Exception) {
+            Log.e("LeagueRepository", "Failed to save completedLeagues: ${e.message}", e)
+        }
+    }
+
+    suspend fun loadCompletedLeagues(): Set<League> {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return emptySet()
+        return try {
+            val doc = db.collection("users")
+                .document(uid)
+                .collection("progress")
+                .document("completed_leagues")
+                .get()
+                .await()
+
+            @Suppress("UNCHECKED_CAST")
+            val names = doc.get("leagues") as? List<String> ?: emptyList()
+            val result = names.mapNotNull { name ->
+                try { League.valueOf(name) } catch (e: Exception) { null }
+            }.toSet()
+            Log.d("LeagueRepository", "Loaded completedLeagues: ${result.map { it.name }}")
+            result
+        } catch (e: Exception) {
+            Log.e("LeagueRepository", "Failed to load completedLeagues: ${e.message}", e)
+            emptySet()
+        }
+    }
+
 }

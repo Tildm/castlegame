@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,6 +57,7 @@ import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import coil.imageLoader
 import coil.request.ImageRequest
+import com.example.castlegame.R
 import com.example.castlegame.data.model.CastleItem
 import com.example.castlegame.data.model.GlobalCastle
 import com.example.castlegame.data.sharing.findActivity
@@ -152,8 +154,8 @@ fun UserSuperLeagueRankingScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(
-                    if (isPersonalSuperLeague) "🏰 My Super League Ranking"
-                    else "🏰 Your Super League Ranking",
+                    if (isPersonalSuperLeague) "My Super League Ranking"
+                    else "Your Super League Ranking",
                     fontFamily = DeutschGothic,
                     letterSpacing = 2.sp,
                     color = Color(0xFF1478F6)
@@ -185,10 +187,10 @@ fun UserSuperLeagueRankingScreen(
             }
 
             val nextButtonLabel: String = when {
-                isPersonalSuperLeague -> if (superLeaguePlayed) "Back to menu" else "SuperLeague"
+                isPersonalSuperLeague -> if (superLeaguePlayed) "Begin a New Quest" else "SuperLeague"
                 !myEuroLeaguePlayed   -> "MyEuroLeague"
                 !mySuperLeaguePlayed  -> "MySuperLeague"
-                else                  -> "Back to menu"
+                else                  -> "Begin a New Quest"
             }
 
             val nextButtonAction: () -> Unit = when {
@@ -207,7 +209,7 @@ fun UserSuperLeagueRankingScreen(
                 if (showBackButton) {
                     Button(
                         onClick = onBackToInternational,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(0.5f),
                         shape = RoundedCornerShape(
                             topStart    = 24.dp,
                             bottomStart = 24.dp,
@@ -378,6 +380,15 @@ fun FacebookShareTemplate(
 
             Spacer(modifier = Modifier.height(20.dp))
 
+        // Play Store link baked into the image
+        Text(
+            text      = "\uD83D\uDD17 play.google.com/store/apps/details?id=com.example.castlegame",
+            fontSize  = 10.sp,
+            color     = Color(0xFF6A5ACD),
+            textAlign = TextAlign.Center,
+            modifier  = Modifier.fillMaxWidth()
+        )
+
             // --- LÁBLÉC (Call to Action) ---
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF6A5ACD)),
@@ -390,7 +401,11 @@ fun FacebookShareTemplate(
                     Text("VOTE NOW IN THE APP!", color = Color.White, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.width(8.dp))
                     // Ide jöhet egy kis Google Play ikon imitáció
-                    Box(Modifier.size(24.dp).background(Color.White, CircleShape))
+                    Image(
+                        painter = painterResource(id = R.drawable.play_store_round_color_icon),
+                        contentDescription = "Google Play Store Logo",
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
             }
         }
@@ -473,7 +488,7 @@ fun SuperLeagueRankingScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        "🌍 Super League Ranking",
+                        "Super League Ranking",
                         fontFamily = DeutschGothic,
                         letterSpacing = 2.sp,
                     )
@@ -504,7 +519,7 @@ fun SuperLeagueRankingScreen(
                     color = Color.White,
                     modifier = Modifier.size(20.dp)
                 )
-                else Text("Share Europe's Ranking 🌍")
+                else Text("Share Europe's Ranking")
             }
         }
     ) { padding ->
