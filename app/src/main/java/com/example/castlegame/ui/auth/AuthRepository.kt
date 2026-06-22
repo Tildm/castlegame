@@ -86,4 +86,51 @@ class AuthRepository {
     fun logout() {
         auth.signOut()
     }
+
+
+    /**
+     * Re-authenticates the user with email/password, then deletes the account.
+     * Use this when deleteAccount() fails with FirebaseAuthRecentLoginRequiredException.
+     */
+    suspend fun reauthenticateWithEmailAndDelete(email: String, password: String): Result<Unit> {
+        return try {
+            val user       = auth.currentUser ?: return Result.failure(Exception("No user"))
+            val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(email, password)
+            user.reauthenticate(credential).await()
+            user.delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Re-authenticates with a fresh Google ID token, then deletes the account.
+     */
+    suspend fun reauthenticateWithGoogleAndDelete(idToken: String): Result<Unit> {
+        return try {
+            val user       = auth.currentUser ?: return Result.failure(Exception("No user"))
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            user.reauthenticate(credential).await()
+            user.delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Re-authenticates with a fresh Facebook token, then deletes the account.
+     */
+    suspend fun reauthenticateWithFacebookAndDelete(token: String): Result<Unit> {
+        return try {
+            val user       = auth.currentUser ?: return Result.failure(Exception("No user"))
+            val credential = FacebookAuthProvider.getCredential(token)
+            user.reauthenticate(credential).await()
+            user.delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

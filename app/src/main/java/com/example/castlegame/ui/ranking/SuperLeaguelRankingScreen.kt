@@ -40,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
@@ -63,7 +64,8 @@ import com.example.castlegame.data.model.GlobalCastle
 import com.example.castlegame.data.sharing.findActivity
 import com.example.castlegame.data.sharing.shareRankingOnFacebook
 import com.example.castlegame.ui.theme.DeutschGothic
-import dev.shreyaspatil.capturable.Capturable
+//import dev.shreyaspatil.capturable.Capturable
+import dev.shreyaspatil.capturable.capturable
 import dev.shreyaspatil.capturable.controller.rememberCaptureController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -412,7 +414,9 @@ fun FacebookShareTemplate(
 
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeApi::class,
+    ExperimentalComposeUiApi::class
+)
 @Composable
 fun SuperLeagueRankingScreen(
     ranking: List<GlobalCastle>,
@@ -474,13 +478,13 @@ fun SuperLeagueRankingScreen(
            .height(1080.dp)
             .alpha(0f)
             .zIndex(-1f)
+            .capturable(captureController)
     ) {
-        Capturable(controller = captureController, onCaptured = { _, _ -> }) {
+
             FacebookShareTemplate(
                 ranking = ranking,
                 preloadedBitmaps = preloadedBitmaps // Pass them here
             )
-        }
     }
 
     Scaffold(

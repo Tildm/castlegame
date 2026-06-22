@@ -1,3 +1,4 @@
+import com.android.build.api.dsl.ApplicationExtension
 //import androidx.glance.appwidget.compose
 
 plugins {
@@ -7,7 +8,7 @@ plugins {
     id("com.google.gms.google-services")
 }
 
-android {
+configure<ApplicationExtension> {
     namespace = "com.example.castlegame"
     compileSdk = 37
 
@@ -35,22 +36,19 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(
-                org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
-            )
-        }
-    }
-
     buildFeatures {
         compose = true
     }
 }
 
-    kotlin {
-        jvmToolchain(11)
+kotlin {
+    jvmToolchain(11)
+    compilerOptions {
+        jvmTarget.set(
+            org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+        )
     }
+}
 
 dependencies {
     implementation(libs.androidx.compose.ui.text)
@@ -73,9 +71,9 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.room.ktx)
     
-    implementation(libs.androidx.compose.remote.creation.core)
-    implementation(libs.androidx.benchmark.traceprocessor)
-    implementation(libs.androidx.camera.camera2.pipe)
+   // implementation(libs.androidx.compose.remote.creation.core)
+    //implementation(libs.androidx.benchmark.traceprocessor)
+    //implementation(libs.androidx.camera.camera2.pipe)
     implementation(libs.androidx.runtime)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.compose.foundation.layout)

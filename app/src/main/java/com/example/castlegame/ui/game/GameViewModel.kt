@@ -329,18 +329,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             repository.saveCompletedLeagues(updated)   // ← ADD THIS
         }
 
-       // Log.d("GameViewModel", "finishLeague CALLED")
-      //  Log.d("GameViewModel", "Current phase BEFORE update: ${state.phase}")
-      //  Log.d("GameViewModel", "league castles = ${_uiState.value.leagues[league]}")
-       // Log.d("GameViewModel", "winCounts = $winCounts")  // ← ADD THIS DEBUG
-
-        // ✅ FIX: Use winCounts instead of tapCounts
-        val winnerId = winCounts.maxByOrNull { it.value }?.key
+       // ✅ FIX: Use winCounts instead of tapCounts
+      val winnerId = winCounts.maxByOrNull { it.value }?.key
         val winner = state.leagues[league]
-            ?.firstOrNull { it.id == winnerId }
+      ?.firstOrNull { it.id == winnerId }
 
-        Log.d("GameViewModel", "winner = $winner")
-        Log.d("GameViewModel", "winnerId = $winnerId")
 
         // Store the winner
         if (winner != null) {
@@ -1234,10 +1227,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private fun finishUserLeague() {
         val state   = _uiState.value
         val league  = state.currentLeague ?: return
-        val castles = state.userLeagueCastles[league] ?: return
+        //val castles = state.userLeagueCastles[league] ?: return
 
-        val winnerId = winCounts.maxByOrNull { it.value }?.key
-        val winner   = castles.firstOrNull { it.id == winnerId }
+        val rankedCastles = getUserLeagueRanking()
+        val winner        = rankedCastles.firstOrNull()?.first
+        //val winnerId = winCounts.maxByOrNull { it.value }?.key
+       // val winner   = castles.firstOrNull { it.id == winnerId }
 
         Log.d("GameViewModel", "User league winner for $league = $winner")
 
@@ -1247,7 +1242,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 userId     = uid,
                 leagueId   = league.name,
                 winner = winner,
-                allResults = getUserLeagueRanking(),
+                //allResults = getUserLeagueRanking(),
+                allResults = rankedCastles,
                 onSuccess  = { Log.d("GameViewModel", "User league ranking saved for ${league.name}") },
                 onError    = { Log.e("GameViewModel", "Failed to save user league ranking for ${league.name}", it) }
             )

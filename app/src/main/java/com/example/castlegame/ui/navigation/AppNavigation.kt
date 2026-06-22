@@ -69,7 +69,15 @@ fun AppNavigation(
         }
 
         composable("profile") {
-            ProfileScreen(onBack = { navController.popBackStack() })
+            //ProfileScreen(onBack = { navController.popBackStack() })
+            ProfileScreen(
+                onBack = { navController.popBackStack() },
+                onAccountDeleted = {
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }  // clears the entire back stack
+                    }
+                }
+            )
         }
         composable("faq") {
             FaqScreen(onBack = { navController.popBackStack() })

@@ -38,7 +38,9 @@ import com.example.castlegame.data.model.League
 import com.example.castlegame.data.sharing.findActivity
 import com.example.castlegame.data.sharing.shareRankingOnFacebook
 import com.example.castlegame.ui.theme.DeutschGothic
-import dev.shreyaspatil.capturable.Capturable
+//import dev.shreyaspatil.capturable.Capturable
+import dev.shreyaspatil.capturable.capturable
+import dev.shreyaspatil.capturable.controller.rememberCaptureController
 import dev.shreyaspatil.capturable.controller.rememberCaptureController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -48,11 +50,14 @@ import kotlinx.coroutines.yield
 import androidx.compose.runtime.ExperimentalComposeApi
 import coil.compose.rememberAsyncImagePainter
 import android.net.Uri
+import androidx.compose.ui.ExperimentalComposeUiApi
 import com.facebook.share.model.SharePhoto
 import com.facebook.share.model.SharePhotoContent
 import com.facebook.share.widget.ShareDialog
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeApi::class,
+    ExperimentalComposeUiApi::class
+)
 @Composable
 fun LeagueRankingScreen(
     league: League,
@@ -118,15 +123,15 @@ fun LeagueRankingScreen(
             .height(1080.dp)
             .alpha(0f)
             .zIndex(-1f)
+            .capturable(captureController)
     ) {
-        Capturable(controller = captureController, onCaptured = { _, _ -> }) {
             LeagueFacebookShareTemplate(
                 league           = league,
                 ranking          = ranking,
                 preloadedBitmaps = preloadedBitmaps,
                 isUserLeague     = isUserLeague,
             )
-        }
+
     }
 
     Scaffold { padding ->
