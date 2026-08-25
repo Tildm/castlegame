@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
 import com.example.castlegame.ui.auth.AuthViewModel
+import com.example.castlegame.ui.auth.CountryGateDialog
 import com.example.castlegame.ui.auth.LoginScreen
 import com.example.castlegame.ui.auth.ProfileScreen
 import com.example.castlegame.ui.auth.RegisterScreen
@@ -19,6 +20,7 @@ import com.example.castlegame.ui.tooltip.PrivacySummaryScreen
 @Composable
 fun AppNavigation(
     authViewModel: AuthViewModel
+
 ) {
     val navController = rememberNavController()
     val user       by authViewModel.user.collectAsState()
@@ -44,14 +46,17 @@ fun AppNavigation(
         composable("login") {
             LoginScreen(
                 onSuccess            = { /* auth listener handles navigation */ },
-                onNavigateToRegister = { navController.navigate("register") }
+                onNavigateToRegister = { navController.navigate("register") },
+                onPrivacyPolicyClick = { navController.navigate("privacy_summary") }
+
             )
         }
 
         composable("register") {
             RegisterScreen(
                 onSuccess         = { /* auth listener handles navigation */ },
-                onNavigateToLogin = { navController.popBackStack() }
+                onNavigateToLogin = { navController.popBackStack() },
+                onPrivacyPolicyClick = { navController.navigate("privacy_summary") }
             )
         }
 
@@ -65,6 +70,9 @@ fun AppNavigation(
                     onLegalNoticesClick = { navController.navigate("legal_notices") },
                     onPrivacySummaryClick  = { navController.navigate("privacy_summary") },
                 )
+                // Pops itself up the moment the user has finished a round but
+                // still has no country on file; renders nothing otherwise.
+                CountryGateDialog()
             }
         }
 

@@ -1,10 +1,17 @@
 package com.example.castlegame.ui.auth
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -12,12 +19,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 fun RegisterScreen(
     onSuccess: () -> Unit,
     onNavigateToLogin: () -> Unit,
+    onPrivacyPolicyClick: () -> Unit,
     viewModel: AuthViewModel = viewModel()
 ) {
     val authState by viewModel.authState.collectAsState()
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var privacyAccepted by remember { mutableStateOf(false) }
 
     // Reset auth state when leaving the screen
     DisposableEffect(Unit) {
@@ -33,6 +42,8 @@ fun RegisterScreen(
             viewModel.resetAuthState()
         }
     }
+
+    val canRegister = authState !is AuthResultState.Loading && privacyAccepted
 
     Column(
         modifier = Modifier
@@ -69,10 +80,50 @@ fun RegisterScreen(
 
         Spacer(Modifier.height(16.dp))
 
+        // ── Privacy Policy consent (required for Google Play compliance) ──
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Checkbox(
+                checked  = privacyAccepted,
+                onCheckedChange = { privacyAccepted = it },
+                enabled  = authState !is AuthResultState.Loading
+            )
+            val annotatedText = buildAnnotatedString {
+                append("I have read and accept the ")
+                pushStringAnnotation(tag = "PRIVACY_POLICY", annotation = "privacy_policy")
+                withStyle(
+                    style = SpanStyle(
+                        color           = MaterialTheme.colorScheme.primary,
+                        fontWeight      = FontWeight.SemiBold,
+                        textDecoration  = TextDecoration.Underline
+                    )
+                ) {
+                    append("Privacy Policy")
+                }
+                pop()
+            }
+            Text(
+                text = annotatedText,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) {
+                        onPrivacyPolicyClick()
+                    }
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
         Button(
-            onClick = { viewModel.register(email, password) },
+            onClick = { viewModel.register(email, password, privacyAccepted) },
             modifier = Modifier.fillMaxWidth(),
-            enabled = authState !is AuthResultState.Loading
+            enabled = canRegister
         ) {
             if (authState is AuthResultState.Loading) {
                 CircularProgressIndicator(
@@ -92,6 +143,7 @@ fun RegisterScreen(
         ) {
             Text("Already have an account? Login")
         }
+
 
         // Error message display
         if (authState is AuthResultState.Error) {

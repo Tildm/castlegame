@@ -14,6 +14,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.castlegame.ui.auth.AuthViewModel
 import com.example.castlegame.ui.game.GameViewModel
 import com.example.castlegame.ui.navigation.AppNavigation
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
+import com.google.firebase.firestore.firestoreSettings
+import com.google.firebase.firestore.persistentCacheSettings
 import com.google.firebase.messaging.FirebaseMessaging
 
 
@@ -77,6 +81,16 @@ class MainActivity : ComponentActivity() {
                 // pass castleIdFromNotification here if you want to navigate on launch
             )
         }
+
+// In your Firebase initialization (Application class or MainActivity):
+        val settings = firestoreSettings {
+            setLocalCacheSettings(
+                persistentCacheSettings {
+                    setSizeBytes(FirebaseFirestoreSettings.CACHE_SIZE_UNLIMITED)
+                }
+            )
+        }
+        FirebaseFirestore.getInstance().firestoreSettings = settings
     }
 }
 

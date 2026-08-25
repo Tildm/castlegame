@@ -6,9 +6,11 @@ import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import android.util.Log
+import com.google.firebase.Timestamp
 
 class AuthViewModel(
-    private val repository: AuthRepository = AuthRepository()
+    private val repository: AuthRepository = AuthRepository(),
+            private val profileRepository: UserProfileRepository = UserProfileRepository()
 ) : ViewModel() {
 
     /* ---------------------------------------------------
@@ -67,7 +69,7 @@ class AuthViewModel(
     private val _authState = MutableStateFlow<AuthResultState>(AuthResultState.Idle)
     val authState: StateFlow<AuthResultState> = _authState.asStateFlow()
 
-    fun register(email: String, password: String) {
+    fun register(email: String, password: String, privacyAccepted: Boolean) {
         if (email.isBlank() || password.isBlank()) {
             _authState.value = AuthResultState.Error("Please enter both email and password.")
             return
@@ -76,12 +78,45 @@ class AuthViewModel(
             _authState.value = AuthResultState.Error("Password must be at least 6 characters.")
             return
         }
+        if (!privacyAccepted) {
+            _authState.value = AuthResultState.Error("Please accept the Privacy Policy to continue.")
+            return
+        }
         _authState.value = AuthResultState.Loading
         viewModelScope.launch {
             val result = repository.register(email, password)
-            _authState.value = result.fold(
-                onSuccess = { AuthResultState.Success },
-                onFailure = { AuthResultState.Error(it.localizedMessage ?: "Registration failed. Please try again.") }
+            result.fold(
+                onSuccess = {
+                    // Account created → now create the Firestore profile with
+                    // a recorded timestamp of consent.
+                    val uid = repository.currentUser?.uid
+                    if (uid != null) {
+                        val newProfile = UserProfile(
+                            id                       = uid,
+                            email                    = email,
+                            privacyPolicyAccepted   = true,
+                            privacyPolicyAcceptedAt = Timestamp.now()
+                        )
+                        val profileResult = profileRepository.createProfile(newProfile)
+                        _authState.value = profileResult.fold(
+                            onSuccess = { AuthResultState.Success },
+                            onFailure = {
+                                Log.e("AUTH", "Profile creation failed after registration", it)
+                                // Auth account exists but profile write failed — still treat
+                                // as success for navigation purposes; profile can be created
+                                // lazily later (e.g. on next login) if needed.
+                                AuthResultState.Success
+                            }
+                        )
+                    } else {
+                        _authState.value = AuthResultState.Success
+                    }
+                },
+                onFailure = {
+                    _authState.value = AuthResultState.Error(
+                        it.localizedMessage ?: "Registration failed. Please try again."
+                    )
+                }
             )
         }
     }

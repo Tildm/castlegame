@@ -36,6 +36,7 @@ import androidx.compose.runtime.ExperimentalComposeApi
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -64,6 +65,7 @@ import com.example.castlegame.data.model.GlobalCastle
 import com.example.castlegame.data.sharing.findActivity
 import com.example.castlegame.data.sharing.shareRankingOnFacebook
 import com.example.castlegame.ui.theme.DeutschGothic
+import com.example.castlegame.ui.tooltip.HeraldTooltipDialog
 //import dev.shreyaspatil.capturable.Capturable
 import dev.shreyaspatil.capturable.capturable
 import dev.shreyaspatil.capturable.controller.rememberCaptureController
@@ -72,6 +74,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import toCastleItem
+import com.example.castlegame.ui.tooltip.TooltipRepository
+import com.example.castlegame.ui.tooltip.TooltipTranslation
 
 
 /*
@@ -136,7 +140,7 @@ fun SuperLeagueRankingScreen(
 */
 
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun UserSuperLeagueRankingScreen(
     ranking: List<Pair<CastleItem, Int>>,
@@ -147,11 +151,92 @@ fun UserSuperLeagueRankingScreen(
     superLeaguePlayed: Boolean = true,
     isPersonalSuperLeague: Boolean = false,
     myEuroLeaguePlayed: Boolean = false,
+    allCountriesPlayed: Boolean = false,
     mySuperLeaguePlayed: Boolean = false,
     onMyEuroLeagueClick: () -> Unit = {},
     onMySuperLeagueClick: () -> Unit = {},
     onPlaySuperLeague: () -> Unit = {},
-) {
+)
+{
+
+    // ── Tooltip state ─────────────────────────────────────────────────────────
+    var showTooltip by remember { mutableStateOf(false) }
+
+    val tooltips by produceState(initialValue = TooltipTranslation()) {
+        value = TooltipRepository.getSuperLeagueTooltips()
+    }
+
+    if (showTooltip && tooltips.myEuroLeagueTooltip.isNotBlank()) {
+        HeraldTooltipDialog(
+            tooltipText = tooltips.myEuroLeagueTooltip,
+            onDismiss   = { showTooltip = false }
+        )
+    }
+
+    // ── Facebook sharing state ──────────────────────────────────────────────
+    val context = LocalContext.current
+    val activity = context.findActivity()
+    val scope = rememberCoroutineScope()
+    val captureController = rememberCaptureController()
+    var isSharing by remember { mutableStateOf(false) }
+
+    // Pre-load top 3 images as software bitmaps
+    var preloadedBitmaps by remember { mutableStateOf<List<Bitmap?>>(emptyList()) }
+
+    LaunchedEffect(ranking) {
+        if (ranking.isEmpty()) return@LaunchedEffect
+        val top3 = ranking.take(3)
+        val bitmaps = top3.map { (castle, _) ->
+            withContext(Dispatchers.IO) {
+                try {
+                    val url = castle.imageUrl.firstOrNull()
+                    if (url.isNullOrBlank()) return@withContext null
+
+                    val request = ImageRequest.Builder(context)
+                        .data(url)
+                        .allowHardware(false)
+                        .size(200, 200)
+                        .build()
+
+                    val result = context.imageLoader.execute(request)
+                    if (result !is coil.request.SuccessResult) return@withContext null
+
+                    val drawable = result.drawable
+                    if (drawable is BitmapDrawable) {
+                        drawable.bitmap
+                    } else {
+                        val bmp = Bitmap.createBitmap(200, 200, Bitmap.Config.ARGB_8888)
+                        val canvas = android.graphics.Canvas(bmp)
+                        drawable.setBounds(0, 0, 200, 200)
+                        drawable.draw(canvas)
+                        bmp
+                    }
+                } catch (e: Exception) {
+                    Log.e("UserSuperLeagueRankingScreen", "Bitmap load failed", e)
+                    null
+                }
+            }
+        }
+        preloadedBitmaps = bitmaps
+    }
+
+    // Hidden off-screen template captured for sharing
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .width(1080.dp)
+            .height(1080.dp)
+            .alpha(0f)
+            .zIndex(-1f)
+            .capturable(captureController)
+    ) {
+        UserSuperLeagueFacebookShareTemplate(
+            ranking          = ranking,
+            isPersonalSuperLeague = isPersonalSuperLeague,
+            preloadedBitmaps = preloadedBitmaps,
+        )
+    }
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -188,6 +273,42 @@ fun UserSuperLeagueRankingScreen(
                 }
             }
 
+            // ── Facebook share button ────────────────────────────────────
+            Button(
+                onClick = {
+                    if (activity != null && !isSharing &&
+                        ranking.isNotEmpty() &&
+                        preloadedBitmaps.size == ranking.take(3).size
+                    ) {
+                        isSharing = true
+                        scope.launch {
+                            try {
+                                delay(200)
+                                val bitmap = captureController.captureAsync().await().asAndroidBitmap()
+                                shareRankingOnFacebook(activity, bitmap)
+                            } catch (e: Exception) {
+                                Log.e("UserSuperLeagueRankingScreen", "Share failed", e)
+                            } finally {
+                                isSharing = false
+                            }
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                colors  = ButtonDefaults.buttonColors(containerColor = Color(0xFF1877F2)),
+                shape   = RoundedCornerShape(24.dp),
+                enabled = !isSharing && ranking.isNotEmpty() &&
+                        preloadedBitmaps.size == ranking.take(3).size
+            ) {
+                if (isSharing) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
+                } else {
+                    Text("Share my Success on Facebook 📢", color = Color.White)
+                }
+            }
+
             val nextButtonLabel: String = when {
                 isPersonalSuperLeague -> if (superLeaguePlayed) "Begin a New Quest" else "SuperLeague"
                 !myEuroLeaguePlayed   -> "MyEuroLeague"
@@ -197,7 +318,8 @@ fun UserSuperLeagueRankingScreen(
 
             val nextButtonAction: () -> Unit = when {
                 isPersonalSuperLeague -> if (superLeaguePlayed) onBackToMenu else onPlaySuperLeague
-                !myEuroLeaguePlayed   -> onMyEuroLeagueClick
+                !myEuroLeaguePlayed   -> if (allCountriesPlayed) onMyEuroLeagueClick
+                else { { showTooltip = true } }
                 !mySuperLeaguePlayed  -> onMySuperLeagueClick
                 else                  -> onBackToMenu
             }
@@ -286,6 +408,121 @@ fun getCountryFlag(country: String): String {
 }
 
 
+@Composable
+private fun UserSuperLeagueFacebookShareTemplate(
+    ranking: List<Pair<CastleItem, Int>>,
+    isPersonalSuperLeague: Boolean = false,
+    preloadedBitmaps: List<Bitmap?> = emptyList(),
+) {
+    Column(
+        modifier = Modifier
+            .width(400.dp)
+            .background(Color.White)
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text       = if (isPersonalSuperLeague) "MY SUPER LEAGUE TOP 3" else "MY EURO LEAGUE TOP 3",
+            fontSize   = 24.sp,
+            fontWeight = FontWeight.Black,
+            color      = Color(0xFF1478F6),
+            textAlign  = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ranking.take(6).forEachIndexed { index, (castle, score) ->
+            val bitmap = preloadedBitmaps.getOrNull(index)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text       = "#${index + 1}",
+                    fontSize   = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier   = Modifier.width(35.dp),
+                    color      = Color(0xFF6A5ACD),
+                )
+
+                Card(
+                    colors   = CardDefaults.cardColors(containerColor = Color(0xFF6A5ACD)),
+                    shape    = RoundedCornerShape(8.dp),
+                    modifier = Modifier.size(50.dp)
+                ) {
+                    if (bitmap != null) {
+                        Image(
+                            bitmap             = bitmap.asImageBitmap(),
+                            contentDescription = castle.title,
+                            contentScale       = ContentScale.Crop,
+                            modifier           = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Box(modifier = Modifier.fillMaxSize().background(Color(0xFF6A5ACD)))
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text       = castle.title,
+                            fontSize   = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines   = 1,
+                            overflow   = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text     = getCountryFlag(castle.country),
+                            fontSize = 14.sp
+                        )
+                    }
+                    Text(
+                        text     = "$score ${if (score == 1) "vote" else "votes"}",
+                        fontSize = 12.sp,
+                        color    = Color.Gray
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text      = "\uD83D\uDD17 play.google.com/store/apps/details?id=com.example.castlegame",
+            fontSize  = 10.sp,
+            color     = Color(0xFF6A5ACD),
+            textAlign = TextAlign.Center,
+            modifier  = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF6A5ACD)),
+            shape  = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("VOTE NOW IN THE APP!", color = Color.White, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.width(8.dp))
+                Image(
+                    painter = painterResource(id = R.drawable.play_store_round_color_icon),
+                    contentDescription = "Google Play Store Logo",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun FacebookShareTemplate(
@@ -311,7 +548,7 @@ fun FacebookShareTemplate(
         Spacer(modifier = Modifier.height(16.dp))
         Log.d("SuperLeagueRankingScreen", "preloadedBitmaps: ${preloadedBitmaps}")
         // --- A TOP 6 LISTA ---
-        ranking.take(6).forEachIndexed { index, globalCastle ->
+        ranking.take(3).forEachIndexed { index, globalCastle ->
             val castleItem = globalCastle.toCastleItem()
             val bitmap = preloadedBitmaps.getOrNull(index)
             Row(
@@ -380,7 +617,7 @@ fun FacebookShareTemplate(
             }
         }
 
-            Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         // Play Store link baked into the image
         Text(
@@ -391,26 +628,26 @@ fun FacebookShareTemplate(
             modifier  = Modifier.fillMaxWidth()
         )
 
-            // --- LÁBLÉC (Call to Action) ---
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF6A5ACD)),
-                shape = RoundedCornerShape(12.dp)
+        // --- LÁBLÉC (Call to Action) ---
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF6A5ACD)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("VOTE NOW IN THE APP!", color = Color.White, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    // Ide jöhet egy kis Google Play ikon imitáció
-                    Image(
-                        painter = painterResource(id = R.drawable.play_store_round_color_icon),
-                        contentDescription = "Google Play Store Logo",
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                Text("VOTE NOW IN THE APP!", color = Color.White, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.width(8.dp))
+                // Ide jöhet egy kis Google Play ikon imitáció
+                Image(
+                    painter = painterResource(id = R.drawable.play_store_round_color_icon),
+                    contentDescription = "Google Play Store Logo",
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
+    }
 
 }
 
@@ -433,8 +670,8 @@ fun SuperLeagueRankingScreen(
     var preloadedBitmaps by remember { mutableStateOf<List<Bitmap?>>(emptyList()) }
 
     LaunchedEffect(ranking) {
-        val top6 = ranking.take(6)
-        val bitmaps = top6.map { globalCastle ->
+        val top3 = ranking.take(3)
+        val bitmaps = top3.map { globalCastle ->
             withContext(Dispatchers.IO) {
                 try {
                     val url = globalCastle.toCastleItem().imageUrl.firstOrNull()
@@ -474,17 +711,17 @@ fun SuperLeagueRankingScreen(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-           .width(1080.dp)
-           .height(1080.dp)
+            .width(1080.dp)
+            .height(1080.dp)
             .alpha(0f)
             .zIndex(-1f)
             .capturable(captureController)
     ) {
 
-            FacebookShareTemplate(
-                ranking = ranking,
-                preloadedBitmaps = preloadedBitmaps // Pass them here
-            )
+        FacebookShareTemplate(
+            ranking = ranking,
+            preloadedBitmaps = preloadedBitmaps // Pass them here
+        )
     }
 
     Scaffold(
@@ -503,7 +740,7 @@ fun SuperLeagueRankingScreen(
             // Facebook Megosztás Gomb
             Button(
                 onClick = {
-                    if (activity != null && !isSharing && preloadedBitmaps.size == ranking.take(6).size) {
+                    if (activity != null && !isSharing && preloadedBitmaps.size == ranking.take(3).size) {
                         isSharing = true
                         scope.launch {
                             delay(200)
@@ -516,7 +753,7 @@ fun SuperLeagueRankingScreen(
                 },
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1877F2)),
-                        enabled = preloadedBitmaps.size == ranking.take(6).size // disable until ready
+                enabled = preloadedBitmaps.size == ranking.take(3).size // disable until ready
             )
             {
                 if (isSharing) CircularProgressIndicator(
@@ -564,5 +801,3 @@ fun SuperLeagueRankingScreen(
         }
     }
 }
-
-

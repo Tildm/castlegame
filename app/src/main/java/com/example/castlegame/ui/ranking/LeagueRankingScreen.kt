@@ -75,12 +75,12 @@ fun LeagueRankingScreen(
     val captureController = rememberCaptureController()
     var isSharing by remember { mutableStateOf(false) }
 
-    // Pre-load top 6 images as software bitmaps (same pattern as SuperLeagueRankingScreen)
+    // Pre-load top 3 images as software bitmaps (same pattern as SuperLeagueRankingScreen)
     var preloadedBitmaps by remember { mutableStateOf<List<Bitmap?>>(emptyList()) }
 
     LaunchedEffect(ranking) {
-        val top6 = ranking.take(6)
-        val bitmaps = top6.map { (castle, _) ->
+        val top3 = ranking.take(3)
+        val bitmaps = top3.map { (castle, _) ->
             withContext(Dispatchers.IO) {
                 try {
                     val url = castle.imageUrl.firstOrNull()
@@ -163,7 +163,7 @@ fun LeagueRankingScreen(
                         textAlign     = TextAlign.Center
                     )
                 }
-                val displayRanking = ranking.take(8)
+                val displayRanking = if(isUserLeague) ranking.take(6) else ranking.take(3)
                 itemsIndexed(displayRanking) { index, (castle, score) ->
                     RankingRow(
                         position = index + 1,
@@ -178,7 +178,7 @@ fun LeagueRankingScreen(
             Button(
                 onClick = {
                     if (activity != null && !isSharing &&
-                        preloadedBitmaps.size == ranking.take(6).size
+                        preloadedBitmaps.size == ranking.take(3).size
                     ) {
                         isSharing = true
                         scope.launch {
@@ -199,7 +199,7 @@ fun LeagueRankingScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 colors  = ButtonDefaults.buttonColors(containerColor = Color(0xFF1877F2)),
                 shape   = RoundedCornerShape(24.dp),
-                enabled = !isSharing && preloadedBitmaps.size == ranking.take(6).size
+                enabled = !isSharing && preloadedBitmaps.size == ranking.take(3).size
             ) {
                 if (isSharing) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))

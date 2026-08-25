@@ -51,8 +51,11 @@ kotlin {
 }
 
 dependencies {
+    implementation(libs.androidx.compose.animation.core)
+    implementation(libs.androidx.compose.ui.geometry)
     implementation(libs.androidx.compose.ui.text)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.foundation)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -78,6 +81,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.ui)
+    implementation(libs.runtime)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

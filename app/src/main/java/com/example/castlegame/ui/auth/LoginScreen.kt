@@ -2,6 +2,8 @@ package com.example.castlegame.ui.auth
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -12,6 +14,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
 import com.example.castlegame.R
@@ -21,20 +28,31 @@ import com.facebook.FacebookCallback
 import com.facebook.FacebookException
 import com.facebook.login.LoginResult
 import com.facebook.login.widget.LoginButton
+import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
     onSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
-    viewModel: AuthViewModel = viewModel()
+    onPrivacyPolicyClick: () -> Unit,
+    viewModel: AuthViewModel = viewModel(),
+    profileRepository: UserProfileRepository = remember { UserProfileRepository() }
 ) {
     val authState by viewModel.authState.collectAsState()
+    val scope = rememberCoroutineScope()
 
     val callbackManager = remember { CallbackManager.Factory.create() }
 
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+
+    // First-time social sign-in consent gate
+    var showConsentDialog by remember { mutableStateOf(false) }
+    var consentChecked by remember { mutableStateOf(false) }
+    var socialLoginPending by remember { mutableStateOf(false) }
 
     // Reset auth state when leaving the screen
     DisposableEffect(Unit) {
@@ -43,11 +61,31 @@ fun LoginScreen(
         }
     }
 
-    // Handle success state
+
+    // Handle success state.
+    // Email/password logins go straight through — they either went through RegisterScreen
+    // (which already required consent) or are returning users.
+    // Social logins (Google/Facebook) check for a profile first — only first-time users
+    // (no profile yet) see the consent dialog.
     LaunchedEffect(authState) {
         if (authState is AuthResultState.Success) {
-            onSuccess()
-            viewModel.resetAuthState()
+            if (!socialLoginPending) {
+                // Email/password login — skip profile check, go straight through
+                onSuccess()
+                viewModel.resetAuthState()
+            } else {
+                // Social login — check if profile already exists
+                val existingProfile = profileRepository.getProfile().getOrNull()
+                socialLoginPending = false
+                if (existingProfile == null) {
+                    // Brand-new social account → show consent dialog before creating profile
+                    showConsentDialog = true
+                } else {
+                    // Returning social user — already consented previously
+                    onSuccess()
+                    viewModel.resetAuthState()
+                }
+            }
         }
     }
 
@@ -190,5 +228,87 @@ fun LoginScreen(
             )
         }
     }
-}
 
+    // ── First-time social sign-in consent dialog ─────────────────────────────
+    if (showConsentDialog) {
+        AlertDialog(
+            onDismissRequest = { /* must accept or cancel sign-in, no outside-tap dismiss */ },
+            title = { Text("Welcome!") },
+            text = {
+                Column {
+                    Text(
+                        "Before you start playing, please review and accept our Privacy Policy.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = consentChecked,
+                            onCheckedChange = { consentChecked = it }
+                        )
+                        val annotatedText = buildAnnotatedString {
+                            append("I have read and accept the ")
+                            withStyle(
+                                style = SpanStyle(
+                                    color          = MaterialTheme.colorScheme.primary,
+                                    fontWeight     = FontWeight.SemiBold,
+                                    textDecoration = TextDecoration.Underline
+                                )
+                            ) {
+                                append("Privacy Policy")
+                            }
+                        }
+                        Text(
+                            text = annotatedText,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable(
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() }
+                                ) { onPrivacyPolicyClick() }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val uid   = FirebaseAuth.getInstance().currentUser?.uid ?: return@Button
+                        val email = FirebaseAuth.getInstance().currentUser?.email ?: ""
+                        scope.launch {
+                            val newProfile = UserProfile(
+                                id                       = uid,
+                                email                    = email,
+                                privacyPolicyAccepted   = true,
+                                privacyPolicyAcceptedAt = Timestamp.now()
+                            )
+                            profileRepository.createProfile(newProfile)
+                            showConsentDialog   = false
+                            socialLoginPending = false
+                            onSuccess()
+                            viewModel.resetAuthState()
+                        }
+                    },
+                    enabled = consentChecked
+                ) {
+                    Text("Accept & Continue")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        // User declined → sign them out and stay on Login
+                        FirebaseAuth.getInstance().signOut()
+                        showConsentDialog   = false
+                        socialLoginPending = false
+                        consentChecked       = false
+                        viewModel.resetAuthState()
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}

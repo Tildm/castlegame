@@ -29,12 +29,15 @@ data class GameUiState(
     val leagueWinner: CastleItem? = null,
     val globalLeagueRanking: List<Pair<CastleItem, Int>> = emptyList(),
     val isLeagueRankingLoading: Boolean = false,
+    val allLeaguesFinished: Boolean = false,
 
     // ── SuperLeague ──────────────────────────────────────────────────────────
     val superLeagueCastles: List<CastleItem> = emptyList(),
     val superLeagueWinner: CastleItem? = null,
     val globalRanking: List<GlobalCastle> = emptyList(),
     val userSuperLeagueRanking: List<Pair<CastleItem, Int>> = emptyList(),
+
+    val sessionCompletedLeagues: Set<League> = emptySet(),  // tracks only current session
 
     // ── Country ──────────────────────────────────────────────────────────────
     val availableCountries: List<String> = emptyList(),

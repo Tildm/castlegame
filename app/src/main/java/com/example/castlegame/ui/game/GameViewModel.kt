@@ -4,6 +4,8 @@ package com.example.castlegame.ui.game
 import LeagueResult
 import android.app.Application
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -15,8 +17,11 @@ import com.example.castlegame.data.model.CastleItem
 import com.example.castlegame.data.model.GlobalCastle
 import com.example.castlegame.data.model.League
 import com.example.castlegame.data.remote.NetworkModule
+import com.example.castlegame.data.repository.DemographicsRepository
 import com.example.castlegame.data.repository.GlobalRepository
 import com.example.castlegame.data.repository.LeagueRepository
+import com.example.castlegame.data.repository.QuizRepository
+import com.example.castlegame.ui.auth.UserProfileRepository
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +37,61 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private val globalRepository: GlobalRepository = GlobalRepository()
+    private val quizRepository: QuizRepository = QuizRepository()
+    private val demographicsRepository: DemographicsRepository = DemographicsRepository()
+    private val userProfileRepository: UserProfileRepository = UserProfileRepository()
+
+    // Cached once per GameViewModel instance (which is itself scoped to the
+    // signed-in user via key(sessionKey) in AppNavigation — see
+    // AuthViewModel.userSessionKey), so a fresh instance is created on
+    // login/logout/account switch and this cache never leaks across users.
+    // Loaded lazily on first vote rather than in init{}, so a user who
+    // never finishes a bracket never triggers an extra profile read.
+    private var voterCountry: String? = null
+    private var voterAgeGroup: String? = null
+    private var voterProfileLoaded = false
+
+    /**
+     * Loads the current user's country/ageGroup once and caches them for
+     * the lifetime of this ViewModel. Used only to tag anonymized
+     * demographic vote counters (see DemographicsRepository) — never
+     * exposed anywhere else and never combined with a uid before being
+     * written.
+     */
+    private suspend fun ensureVoterProfileLoaded() {
+        if (voterProfileLoaded) return
+        voterProfileLoaded = true  // set eagerly: a failed fetch shouldn't retry on every single vote
+        userProfileRepository.getProfile().onSuccess { profile ->
+            voterCountry = profile?.country?.takeIf { it.isNotBlank() }
+            voterAgeGroup = profile?.ageGroup?.takeIf { it.isNotBlank() }
+        }
+    }
+
+    /**
+     * Records one anonymized demographic data point against [winner] —
+     * called once per completed bracket (league, country tournament,
+     * SuperLeague, personal SuperLeague), attributing the CURRENT user's
+     * country/age group to the castle they ended up favoring. This is
+     * additive to, and entirely separate from, the actual win/ranking
+     * writes (LeagueRepository / GlobalRepository) — a failure here never
+     * blocks or affects those.
+     */
+    private fun recordVoteDemographics(winner: CastleItem?) {
+        if (winner == null) return
+        viewModelScope.launch {
+            ensureVoterProfileLoaded()
+            demographicsRepository.recordVoteDemographics(
+                castleId = winner.id,
+                castleTitle = winner.title,
+                voterCountry = voterCountry,
+                voterAgeGroup = voterAgeGroup
+            )
+        }
+    }
+
+
+
+
 
     private val userId: String?
         get() = FirebaseAuth.getInstance().currentUser?.uid
@@ -65,36 +125,86 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadData() {
         viewModelScope.launch {
-            val leagues = repository.loadLeagues()
-            val startLeague = League.WEST
-            val pairs = leagues[startLeague].orEmpty()
-
-            // 🌍 Collect all castles and extract unique country list
-            //allCastles = leagues.values.flatten()
-            allCastles = repository.loadAllCastles()
-            val countries = allCastles
-                .map { it.country }
-                .filter { it.isNotBlank() }
-                .distinct()
-                .sorted()
-
-            _uiState.update {
-                it.copy(
-                    leagues = leagues,
-                    currentLeague = startLeague,
-                    availableCountries = countries
-                )
+            if (!isNetworkAvailable()) {
+                _uiState.update {
+                    it.copy(
+                        isLoading    = false,
+                        errorMessage = "No network connection.\nCheck your connection and try again."
+                    )
+                }
+                return@launch
             }
 
-            // ✅ Promote last week's country winners into their leagues (runs once per week)
-            promoteCountryWinnersIfNewWeek(countries)
+            try {
+                val leagues = repository.loadLeagues()
+                val startLeague = League.WEST
+                val pairs = leagues[startLeague].orEmpty()
 
-            loadPlayedCountries()
-            loadPersistedProgress()
-            resetGame(pairs)
+                allCastles = repository.loadAllCastles()
+                val countries = allCastles
+                    .map { it.country }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .sorted()
+
+                _uiState.update {
+                    it.copy(
+                        leagues            = leagues,
+                        currentLeague      = startLeague,
+                        availableCountries = countries,
+                        isLoading          = false,
+                        errorMessage       = null
+                    )
+                }
+
+                promoteCountryWinnersIfNewWeek(countries)
+                loadPlayedCountries()
+                loadPersistedProgress()
+                resetGame(pairs)
+
+            } catch (e: Exception) {
+                Log.e("GameViewModel", "Failed to load data: ${e.message}", e)
+                _uiState.update {
+                    it.copy(
+                        isLoading    = false,
+                        errorMessage = "No network connection.\nCheck your connection and try again."
+                    )
+                }
+            }
         }
     }
+    /* private fun loadData() {
+         viewModelScope.launch {
+             val leagues = repository.loadLeagues()
+             val startLeague = League.WEST
+             val pairs = leagues[startLeague].orEmpty()
 
+             // 🌍 Collect all castles and extract unique country list
+             //allCastles = leagues.values.flatten()
+             allCastles = repository.loadAllCastles()
+             val countries = allCastles
+                 .map { it.country }
+                 .filter { it.isNotBlank() }
+                 .distinct()
+                 .sorted()
+
+             _uiState.update {
+                 it.copy(
+                     leagues = leagues,
+                     currentLeague = startLeague,
+                     availableCountries = countries
+                 )
+             }
+
+             // ✅ Promote last week's country winners into their leagues (runs once per week)
+             promoteCountryWinnersIfNewWeek(countries)
+
+             loadPlayedCountries()
+             loadPersistedProgress()
+             resetGame(pairs)
+         }
+     }
+ */
     private fun headToHeadComparator() = Comparator<Pair<CastleItem, Int>> { a, b ->
         if (a.second == b.second) {
             val key = listOf(a.first.id, b.first.id).sorted()
@@ -136,7 +246,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
 
     fun selectLeague(league: League) {
-       // Log.d("GameViewModel", "selectLeague: $league")
+        // Log.d("GameViewModel", "selectLeague: $league")
 
         // Clear win counts for the new league
         winCounts.clear()
@@ -213,7 +323,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             currentPhase != GamePhase.COUNTRY_PLAYING &&
             currentPhase != GamePhase.USER_PERSONAL_SUPERLEAGUE_PLAYING// 🆕
         ) {
-         //   Log.d("GameViewModel", "onCastleSelected IGNORED, phase=$currentPhase")
+            //   Log.d("GameViewModel", "onCastleSelected IGNORED, phase=$currentPhase")
             return
         }
 
@@ -230,7 +340,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             val key = listOf(pair.first.id, pair.second.id).sorted()
             headToHead[key[0] to key[1]] = winner.id
 
-           Log.d("GameViewModel", "shuffledPairs in CastleSelected = $shuffledPairs")
+            Log.d("GameViewModel", "shuffledPairs in CastleSelected = $shuffledPairs")
 
             if (shuffledPairs.isEmpty()) {
                 Log.d("GameViewModel", "if shuffledPairs empty in CastleSelected")
@@ -255,7 +365,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     fun nextPair() {
-       // Log.d("GameViewModel", "nextPair() called, shuffled size = ${shuffledPairs.size}")
+        // Log.d("GameViewModel", "nextPair() called, shuffled size = ${shuffledPairs.size}")
 
         val phase = _uiState.value.phase
 
@@ -266,7 +376,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             phase != GamePhase.USER_LEAGUE_PLAYING &&
             phase != GamePhase.USER_PERSONAL_SUPERLEAGUE_PLAYING// 🆕
         ) {
-           // Log.d("GameViewModel", "nextPair SKIPPED, phase=$phase")
+            // Log.d("GameViewModel", "nextPair SKIPPED, phase=$phase")
             return
         }
 
@@ -324,22 +434,28 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val state = _uiState.value
         val league = _uiState.value.currentLeague ?: return
         val updated = _uiState.value.completedLeagues + league
-        _uiState.update { it.copy(completedLeagues = updated) }
+        val sessionUpdated = _uiState.value.sessionCompletedLeagues + league
+        _uiState.update {
+            it.copy(
+                completedLeagues        = updated,
+                sessionCompletedLeagues = sessionUpdated,
+            )
+        }
         viewModelScope.launch {
-            repository.saveCompletedLeagues(updated)   // ← ADD THIS
+            repository.saveCompletedLeagues(updated)
         }
 
-       // ✅ FIX: Use winCounts instead of tapCounts
-      val winnerId = winCounts.maxByOrNull { it.value }?.key
+        // ✅ FIX: Use winCounts instead of tapCounts
+        val winnerId = winCounts.maxByOrNull { it.value }?.key
         val winner = state.leagues[league]
-      ?.firstOrNull { it.id == winnerId }
+            ?.firstOrNull { it.id == winnerId }
 
 
         // Store the winner
         if (winner != null) {
             champions[league] = winner
         }
-
+        recordVoteDemographics(winner)
         // ✅ FIX: Use winCounts for ranking
         val ranking = winCounts
             .toList()
@@ -365,7 +481,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
 
-        // 🥇🥈 TOP 2 selection with head-to-head tiebreaker
+        //TOP 2 selection with head-to-head tiebreaker
         val top2Castles = (state.leagues[league] ?: emptyList())
             .map { castle -> castle to (winCounts[castle.id] ?: 0) }
             .sortedWith(compareByDescending<Pair<CastleItem, Int>> { it.second }.then(headToHeadComparator()))
@@ -373,15 +489,21 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             .map { it.first }
 
         leagueTopResults[league] = top2Castles
-
+        viewModelScope.launch {
+            repository.saveLeagueTop2(league, top2Castles)
+        }
+        //val allDone = updated.size == League.entries.size
+        val allDone = sessionUpdated.size == League.entries.size
         //Log.d("GameViewModel", "TOP2 for ${league.name}: ${top2Castles.map { it.title }}")
-       // Log.d("GameViewModel", "TOP2 for ${league.name}: $top2Castles")
+        // Log.d("GameViewModel", "TOP2 for ${league.name}: $top2Castles")
 
         _uiState.update {
             it.copy(
                 leagueWinner = winner,
                 phase = GamePhase.LEAGUE_WINNER,
                 completedLeagues = it.completedLeagues + league,
+                sessionCompletedLeagues = it.sessionCompletedLeagues + league,
+                allLeaguesFinished = it.allLeaguesFinished || allDone,
                 currentLeague = league,
                 currentPair = null,
                 leagueLocked = false,
@@ -395,8 +517,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
 
-       // Log.d("GameViewModel", "Phase AFTER update: ${_uiState.value.phase}")
-      //  Log.d("GameViewModel", "leagueWinner AFTER update: ${_uiState.value.leagueWinner}")
+        // Log.d("GameViewModel", "Phase AFTER update: ${_uiState.value.phase}")
+        //  Log.d("GameViewModel", "leagueWinner AFTER update: ${_uiState.value.leagueWinner}")
     }
 
 
@@ -410,27 +532,27 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
 
         Log.d("GameViewModel", "Country winner = $winner")
-
+        recordVoteDemographics(winner)
         // ✅ Save country result — mirrors league saving
         val uid = userId
         if (uid != null && winner != null) {
             repository.saveCountryResult(
-               // userId = uid,
+                // userId = uid,
                 country = country,
-              //  winner = winner,
+                //  winner = winner,
                 allResults = getCountryRanking(),
                 onSuccess = { Log.d("LeagueRepo", "Country $country saved") },
                 onError = { Log.e("LeagueRepo", "Failed to save country $country", it) }
             )
         }
         repository.saveUserCountryRanking(
-        country    = country,
-        allResults = getCountryRanking(),
-        onSuccess  = {
-            // refresh the played-countries set so the drawer updates immediately
-            loadPlayedCountries()
-        }
-    )
+            country    = country,
+            allResults = getCountryRanking(),
+            onSuccess  = {
+                // refresh the played-countries set so the drawer updates immediately
+                loadPlayedCountries()
+            }
+        )
         _uiState.update {
             it.copy(
                 countryWinner = winner,
@@ -505,17 +627,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
     }
-  /*  @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
-    fun continueFromWinner() {
-        // Always show ranking first
-        _uiState.update {
-            it.copy(
-                leagueWinner = null,
-                currentPair = null,
-                phase = GamePhase.LEAGUE_RANKING
-            )
-        }
-    }*/
+    /*  @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
+      fun continueFromWinner() {
+          // Always show ranking first
+          _uiState.update {
+              it.copy(
+                  leagueWinner = null,
+                  currentPair = null,
+                  phase = GamePhase.LEAGUE_RANKING
+              )
+          }
+      }*/
 
     /** Switches from Top Rated (global) to the user's own in-memory ranking. */
     fun goToUserLeagueRanking() {
@@ -675,25 +797,25 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     fun continueFromRanking() {
         val state     = _uiState.value
-        val completed = state.completedLeagues
-        val total     = League.entries.size
+        //val completed = state.completedLeagues
+        // val total     = League.entries.size
+        //  val superLeagueAlreadyPlayed = state.superLeagueWinner != null
 
-        if (completed.size == total) {
-            // All four leagues done → start SuperLeague
+        if (state.allLeaguesFinished && state.superLeagueWinner == null) {
+            // All 4 leagues finished in this session and SuperLeague not yet played
             startSuperLeague()
         } else {
-            // Auto-advance to the next unplayed league in declaration order
             tapCounts.clear()
             winCounts.clear()
             headToHead.clear()
 
-            val nextLeague = League.entries.firstOrNull { it !in completed }
+            // Find next league not yet played in this session
+            val sessionCompleted = state.sessionCompletedLeagues
+            val nextLeague = League.entries.firstOrNull { it !in sessionCompleted }
 
             if (nextLeague != null) {
-                // Start it immediately — no manual selection needed
                 selectLeague(nextLeague)
             } else {
-                // Fallback — should never happen, but stay safe
                 _uiState.update {
                     it.copy(
                         currentLeague = null,
@@ -774,38 +896,68 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     fun startSuperLeague() {
-        Log.d("GameViewModel", "SuperLeague here starts")
+        Log.d("GameViewModel", "startSuperLeague() called, leagueTopResults has ${leagueTopResults.size} leagues before launch")
+        viewModelScope.launch {
+            // The button can turn blue (completedLeagues reaching 4) before
+            // loadPersistedProgress()'s fetch of the persisted top2 data has
+            // finished — those two things happen in the same coroutine, but
+            // completedLeagues is set first. Rather than race that load, make
+            // sure every completed league's seed data is actually here before
+            // proceeding; only hits Firestore if something's still missing.
+            val missing = League.entries.any { it !in leagueTopResults }
+            if (missing) {
+                val persisted = repository.loadLeagueTop2(allCastles)
+                leagueTopResults.putAll(persisted)
+            }
 
-        // ✅ Use leagueTopResults which was populated correctly after each league finished
-        // instead of getLeagueRanking() which only reads the current winCounts (last league only)
-        val top2PerLeague = mutableListOf<CastleItem>()
-        League.entries.forEach { league ->
-            val top2 = leagueTopResults[league] ?: emptyList()
-            top2PerLeague.addAll(top2)
+            Log.d("GameViewModel", "SuperLeague here starts")
+
+            // ✅ Use leagueTopResults which was populated correctly after each league finished
+            // instead of getLeagueRanking() which only reads the current winCounts (last league only)
+            val top2PerLeague = mutableListOf<CastleItem>()
+            League.entries.forEach { league ->
+                val top2 = leagueTopResults[league] ?: emptyList()
+                top2PerLeague.addAll(top2)
+            }
+
+            if (top2PerLeague.size < 2) {
+                Log.e("GameViewModel", "startSuperLeague: not enough seed castles (${top2PerLeague.size}), leagueTopResults=${leagueTopResults.keys}")
+                _uiState.update { it.copy(infoMessage = "Couldn't load SuperLeague data. Please try again.") }
+                return@launch
+            }
+
+            winCounts.clear()
+
+            shuffledPairs = generateAllPairs(top2PerLeague).shuffled().toMutableList()
+            totalGames = shuffledPairs.size
+            Log.d("GameViewModel", "totalGames = $totalGames")
+
+            // ✅ Get first pair here, don't call nextPair() separately (it ran on stale state)
+            val firstPair = if (shuffledPairs.isNotEmpty()) {
+                shuffledPairs.removeAt(0)
+            } else null
+
+            _uiState.update { state ->
+                state.copy(
+                    phase = GamePhase.SUPERLEAGUE_PLAYING,
+                    superLeagueCastles = top2PerLeague,
+                    currentLeague = null,
+                    leagueWinner = null,
+                    selectedIndex = null,
+                    currentPair = firstPair,
+                    remainingGames = totalGames,
+                )
+            }
+            Log.d("GameViewModel", "startSuperLeague: state updated, phase=${_uiState.value.phase}, currentPair=${_uiState.value.currentPair?.first?.title} vs ${_uiState.value.currentPair?.second?.title}")
         }
+    }
 
-        winCounts.clear()
-
-        shuffledPairs = generateAllPairs(top2PerLeague).shuffled().toMutableList()
-        totalGames = shuffledPairs.size
-        Log.d("GameViewModel", "totalGames = $totalGames")
-
-        // ✅ Get first pair here, don't call nextPair() separately (it ran on stale state)
-        val firstPair = if (shuffledPairs.isNotEmpty()) {
-            shuffledPairs.removeAt(0)
-        } else null
-
-        _uiState.update { state ->
-            state.copy(
-                phase = GamePhase.SUPERLEAGUE_PLAYING,
-                superLeagueCastles = top2PerLeague,
-                currentLeague = null,
-                leagueWinner = null,
-                selectedIndex = null,
-                currentPair = firstPair,
-                remainingGames = totalGames,
-            )
-        }
+    /**
+     * Clears infoMessage once the UI has shown it (e.g. after displaying a
+     * Snackbar), so it doesn't reappear on the next recomposition/state read.
+     */
+    fun clearInfoMessage() {
+        _uiState.update { it.copy(infoMessage = null) }
     }
 
 
@@ -837,6 +989,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val winner = sortedCastles.firstOrNull()?.first
 
         Log.d("GameViewModel", "SuperLeague winner = $winner")
+        recordVoteDemographics(winner)
 
         // Create global ranking
         val globalRanking = sortedCastles.map { (castle, wins) ->
@@ -897,7 +1050,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 canProceed = false
             )
         }
-     loadGlobalRanking()
+        loadGlobalRanking()
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -966,6 +1119,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 currentLeague                   = null,
                 leagueLocked                    = false,
                 currentPair                     = null,
+                sessionCompletedLeagues = emptySet(),   // ← ADD
+                allLeaguesFinished      = false,
             )
         }
         viewModelScope.launch {
@@ -1043,12 +1198,45 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
 
     fun openCastleInfo(castle: CastleItem) {
-        lastRankingPhase = _uiState.value.phase  // ← _uiState not _state
+        val originPhase = _uiState.value.phase
+        lastRankingPhase = originPhase  // ← _uiState not _state
         selectedCastleForInfo = castle
         _uiState.update { it.copy(          // ← _uiState not _state
             phase = GamePhase.CASTLE_INFO,
             castleForInfo = castle
         )}
+
+        // Track which ranking screen the click came from. Best-effort and
+        // fire-and-forget — a failed/slow network write here must never
+        // block or delay showing the castle info screen to the user.
+        clickSourceFor(originPhase)?.let { source ->
+            viewModelScope.launch {
+                quizRepository.recordInfoCardClick(
+                    castleId = castle.id,
+                    title    = castle.title,
+                    country  = castle.country,
+                    source   = source
+                )
+            }
+        }
+    }
+
+    /**
+     * Maps the ranking phase a castle was clicked from to the matching
+     * QuizRepository.ClickSource constant. Returns null for any phase that
+     * isn't a known ranking screen (e.g. if openCastleInfo is ever called
+     * from somewhere unexpected) — in that case we simply skip tracking
+     * rather than writing a bogus/unrecognized source value.
+     */
+    private fun clickSourceFor(phase: GamePhase): String? = when (phase) {
+        GamePhase.COUNTRY_RANKING                   -> QuizRepository.ClickSource.COUNTRY_RANKING
+        GamePhase.LEAGUE_RANKING                     -> QuizRepository.ClickSource.LEAGUE_RANKING
+        GamePhase.USER_LEAGUE_RANKING                -> QuizRepository.ClickSource.USER_LEAGUE_RANKING
+        GamePhase.SUPERLEAGUE_RANKING                -> QuizRepository.ClickSource.SUPERLEAGUE_RANKING
+        GamePhase.USER_SUPERLEAGUE_RANKING           -> QuizRepository.ClickSource.USER_SUPERLEAGUE_RANKING
+        GamePhase.USER_COUNTRY_RANKING               -> QuizRepository.ClickSource.USER_COUNTRY_RANKING
+        GamePhase.USER_PERSONAL_SUPERLEAGUE_RANKING  -> QuizRepository.ClickSource.USER_PERSONAL_SUPERLEAGUE_RANKING
+        else -> null
     }
 
     fun backFromCastleInfo() {
@@ -1066,7 +1254,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         loadGlobalRanking()
     }
 
-//    Loaded once on init so the drawer can mark countries as played
+    //    Loaded once on init so the drawer can mark countries as played
 //    also sets allCountriesPlayed after loading.
     private fun loadPlayedCountries() {
         viewModelScope.launch {
@@ -1083,13 +1271,23 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-   private fun loadPersistedProgress() {
+    private fun loadPersistedProgress() {
         viewModelScope.launch {
             val completedLeagues = repository.loadCompletedLeagues()
             if (completedLeagues.isNotEmpty()) {
                 _uiState.update {
                     it.copy(completedLeagues = completedLeagues)
                 }
+            }
+
+            // If every league was already finished in a past session, this fresh
+            // GameViewModel's in-memory leagueTopResults is empty — reload it from
+            // Firestore so a direct SuperLeague entry point (without replaying the
+            // leagues this session) has data to seed SuperLeague with.
+            if (completedLeagues.size == League.entries.size) {
+                val top2 = repository.loadLeagueTop2(allCastles)
+                leagueTopResults.putAll(top2)
+                Log.d("GameViewModel", "Reloaded persisted top2 for SuperLeague: ${top2.keys}")
             }
         }
     }
@@ -1232,7 +1430,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val rankedCastles = getUserLeagueRanking()
         val winner        = rankedCastles.firstOrNull()?.first
         //val winnerId = winCounts.maxByOrNull { it.value }?.key
-       // val winner   = castles.firstOrNull { it.id == winnerId }
+        // val winner   = castles.firstOrNull { it.id == winnerId }
 
         Log.d("GameViewModel", "User league winner for $league = $winner")
 
@@ -1365,6 +1563,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             .sortedWith(compareByDescending<Pair<CastleItem, Int>> { it.second }.then(headToHeadComparator()))
 
         val winner = sortedCastles.firstOrNull()?.first
+        recordVoteDemographics(winner)
 
         // ✅ Build GlobalCastle list — mirrors finishSuperLeague()
         val globalRanking = sortedCastles.map { (castle, wins) ->
@@ -1472,6 +1671,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 selectedIndex                   = null,
                 leagueLocked                    = false,
                 remainingGames                  = 0,
+                sessionCompletedLeagues = emptySet(),
+                allLeaguesFinished      = false,
             )
         }
         viewModelScope.launch {
@@ -1505,24 +1706,19 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-   /* fun backToMenuFromPersonalSuperLeague() {
-        winCounts.clear()
-        headToHead.clear()
-        _uiState.update {
-            it.copy(
-                phase                           = GamePhase.SELECT_LEAGUE,
-                userLeagueTopResults            = emptyMap(),
-                userPersonalSuperLeagueCastles  = emptyList(),
-                userPersonalSuperLeagueWinner   = null,
-                userPersonalSuperLeagueRanking  = emptyList(),
-                currentLeague                   = null,
-                currentPair                     = null,
-                selectedIndex                   = null,
-                leagueLocked                    = false,
-                remainingGames                  = 0,
-                myEuroLeaguePlayed              = false,
-                mySuperLeaguePlayed             = false,
-            )
+
+    private fun isNetworkAvailable(): Boolean {
+        val connectivityManager = getApplication<Application>()
+            .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    fun retryLoadCastles() {
+        _uiState.update { it.copy(errorMessage = null, isLoading = true) }
+        viewModelScope.launch {
+            loadData()
         }
-    }*/
+    }
 }

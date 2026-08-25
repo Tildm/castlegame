@@ -10,6 +10,9 @@ import android.util.Log
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 import com.google.firebase.auth.FirebaseAuth
 
@@ -506,25 +509,31 @@ fun saveCountryResult(
             League.SOUTH to mutableListOf<CastleItem>()
         )
 
-        for (country in availableCountries) {
-            val ranking = loadUserCountryRanking(country) ?: continue
-            val storedWinner = ranking.firstOrNull()?.first ?: continue
-            // Enrich with full API data — falls back to stored data if not found
-            val winner = castleById[storedWinner.id] ?: storedWinner
-
-            val targetLeague = when (winner.group) {
-                "East League"  -> League.EAST
-                "West League"  -> League.WEST
-                "North League" -> League.NORTH
-                "South League" -> League.SOUTH
-                else -> {
-                    Log.w("LeagueRepository", "Unknown group '${winner.group}' for $country winner, skipping")
-                    continue
-                }
+        // ── Fetch all country rankings IN PARALLEL ────────────────────────────
+        coroutineScope {
+            val deferreds = availableCountries.map { country ->
+                async { country to loadUserCountryRanking(country) }
             }
+            val rankings = deferreds.awaitAll()
 
-            result[targetLeague]?.add(winner)
-            Log.d("LeagueRepository", "User league: ${winner.title} ($country) → $targetLeague")
+            for ((country, ranking) in rankings) {
+                val storedWinner = ranking?.firstOrNull()?.first ?: continue
+                val winner = castleById[storedWinner.id] ?: storedWinner
+
+                val targetLeague = when (winner.group) {
+                    "East League"  -> League.EAST
+                    "West League"  -> League.WEST
+                    "North League" -> League.NORTH
+                    "South League" -> League.SOUTH
+                    else -> {
+                        Log.w("LeagueRepository", "Unknown group '${winner.group}' for $country winner, skipping")
+                        continue
+                    }
+                }
+
+                result[targetLeague]?.add(winner)
+                Log.d("LeagueRepository", "User league: ${winner.title} ($country) → $targetLeague")
+            }
         }
 
         return result
@@ -859,6 +868,83 @@ suspend fun loadGlobalLeagueRanking(
         } catch (e: Exception) {
             Log.e("LeagueRepository", "Failed to load completedLeagues: ${e.message}", e)
             emptySet()
+        }
+    }
+
+    // ── per-league top-2 (SuperLeague seed data) ──────────────────────────────────
+
+    /**
+     * Persists the 2 castles that advanced out of [league] so SuperLeague can be
+     * reconstructed after the app restarts. Without this, `completed_leagues`
+     * alone tells us WHICH leagues are done but not which castles qualified,
+     * so a fresh session has nothing to seed SuperLeague with.
+     * Merges into the same doc as completedLeagues under a "top2" map keyed by
+     * league name, so leagues can be saved independently without clobbering
+     * each other's entries.
+     */
+    suspend fun saveLeagueTop2(league: League, top2: List<CastleItem>) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        try {
+            val castleList = top2.map { castle ->
+                mapOf(
+                    "castleId"    to castle.id,
+                    "castleTitle" to castle.title,
+                    "imageUrl"    to (castle.imageUrl.firstOrNull() ?: ""),
+                    "country"     to castle.country,
+                    "group"       to castle.group
+                )
+            }
+            db.collection("users")
+                .document(uid)
+                .collection("progress")
+                .document("completed_leagues")
+                .set(mapOf("top2" to mapOf(league.name to castleList)), SetOptions.merge())
+                .await()
+            Log.d("LeagueRepository", "Saved top2 for ${league.name}: ${top2.map { it.title }}")
+        } catch (e: Exception) {
+            Log.e("LeagueRepository", "Failed to save top2 for ${league.name}: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Loads the persisted top-2-per-league data saved by [saveLeagueTop2].
+     * [allCastles] is used to resolve full, up-to-date CastleItems by id where
+     * possible; falls back to reconstructing from the stored fields (mirrors
+     * loadUserCountryRanking's fallback pattern) if a castle isn't found.
+     */
+    suspend fun loadLeagueTop2(allCastles: List<CastleItem>): Map<League, List<CastleItem>> {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return emptyMap()
+        val castleById = allCastles.associateBy { it.id }
+        return try {
+            val doc = db.collection("users")
+                .document(uid)
+                .collection("progress")
+                .document("completed_leagues")
+                .get()
+                .await()
+
+            @Suppress("UNCHECKED_CAST")
+            val top2Raw = doc.get("top2") as? Map<String, List<Map<String, Any>>> ?: return emptyMap()
+
+            top2Raw.mapNotNull { (leagueName, castleMaps) ->
+                val league = try { League.valueOf(leagueName) } catch (e: Exception) { return@mapNotNull null }
+                val castles = castleMaps.mapNotNull { entry ->
+                    val id = entry["castleId"] as? String ?: return@mapNotNull null
+                    castleById[id] ?: CastleItem(
+                        id       = id,
+                        title    = entry["castleTitle"] as? String ?: "",
+                        imageUrl = listOfNotNull(entry["imageUrl"] as? String),
+                        country  = entry["country"] as? String ?: "",
+                        group    = entry["group"] as? String ?: "",
+                        text     = "",
+                        webUrl   = ""
+                    )
+                }
+                league to castles
+            }.toMap()
+        } catch (e: Exception) {
+            Log.e("LeagueRepository", "Failed to load top2: ${e.message}", e)
+            emptyMap()
         }
     }
 
