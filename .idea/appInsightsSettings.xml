@@ -8,8 +8,8 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="com.example.castlegame" />
-                  <option name="mobileSdkAppId" value="1:200782842036:android:9483b8240023dc746eafe1" />
+                  <option name="appId" value="com.tilworks.castlegame" />
+                  <option name="mobileSdkAppId" value="1:200782842036:android:fae4603b0314d4ce6eafe1" />
                   <option name="projectId" value="championofcastles" />
                   <option name="projectNumber" value="200782842036" />
                 </ConnectionSetting>

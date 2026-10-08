@@ -128,6 +128,42 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:200782842036:android:fae4603b0314d4ce6eafe1",
+        "android_client_info": {
+          "package_name": "com.tilworks.castlegame"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "200782842036-o4fkq1be2h13s6lbuoanl6d316pgo18l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA11ZjzrNa_cR6HtrKUywZ77ZFgaqhctTk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "200782842036-o4fkq1be2h13s6lbuoanl6d316pgo18l.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "200782842036-n3abb4udlos5s870fmgd80s58qmt81nk.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "til.ImageChooser"
+              }
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

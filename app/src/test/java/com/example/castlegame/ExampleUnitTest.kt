@@ -1,4 +1,4 @@
-package com.example.castlegame
+package com.tilworks.castlegame
 
 import org.junit.Test
 

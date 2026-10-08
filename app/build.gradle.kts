@@ -9,11 +9,11 @@ plugins {
 }
 
 configure<ApplicationExtension> {
-    namespace = "com.example.castlegame"
+    namespace = "com.tilworks.castlegame"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.castlegame"
+        applicationId = "com.tilworks.castlegame"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
